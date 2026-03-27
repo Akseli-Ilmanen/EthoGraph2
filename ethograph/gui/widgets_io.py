@@ -1,6 +1,7 @@
 """Widget for input/output controls and data loading."""
 
 import os
+import traceback
 from pathlib import Path
 
 import numpy as np
@@ -183,7 +184,7 @@ class IOWidget(QWidget):
         self.reset_button.setObjectName("reset_button")
         self.reset_button.clicked.connect(self._on_reset_gui_clicked)
 
-        self.create_nc_button = QPushButton("➕➕Create with own data")
+        self.create_nc_button = QPushButton("➕Create with own data")
         self.create_nc_button.setObjectName("create_nc_button")
         self.create_nc_button.clicked.connect(self._on_create_nc_clicked)
 
@@ -379,10 +380,12 @@ class IOWidget(QWidget):
                 file_path, format_name, mapping_path, configs_dir,
             )
         except Exception as e:
+            traceback.print_exc()
             QMessageBox.critical(self, "Mapping error", str(e))
             return
 
         if warning:
+            print(f"[WARNING] Mapping warning: {warning}", flush=True)
             QMessageBox.warning(self, "Mapping warning", warning)
 
         if new_mapping_path:
@@ -400,6 +403,7 @@ class IOWidget(QWidget):
                 file_path, format_name, name_to_id, individual,
             )
         except Exception as e:
+            traceback.print_exc()
             QMessageBox.critical(self, "Import error", f"Failed to parse {format_name} file:\n{e}")
             return
 

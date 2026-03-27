@@ -1,5 +1,6 @@
 """Dialog for selecting a template dataset to pre-fill IO paths."""
 
+import traceback
 import webbrowser
 from pathlib import Path
 
@@ -259,6 +260,7 @@ class TemplateDialog(QDialog):
                 )
                 dt.to_netcdf(nc_path)
             except Exception as e:
+                traceback.print_exc()
                 QMessageBox.critical(self, "Error", f"Failed to generate .nc from audio:\n{e}")
                 return
 
@@ -295,6 +297,7 @@ class TemplateDialog(QDialog):
         def on_error(msg):
             progress.close()
             worker.deleteLater()
+            print(f"[ERROR] Download Error: {msg}", flush=True)
             QMessageBox.warning(self, "Download Error", msg)
 
         worker.progress.connect(on_progress)

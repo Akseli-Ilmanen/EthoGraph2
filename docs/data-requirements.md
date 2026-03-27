@@ -149,7 +149,7 @@ Ephys is a session-wide stream (one file covering all trials). The raw recording
 dt.set_stream_offset("ephys", 0.0)   # seconds; adjust to match your setup
 ```
 
-See [Ephys data](ephys-data.md) for supported file formats, Kilosort folder setup, and channel mapping details. See [TrialTree — Stream offsets](trialtree.md#stream-offsets) for the full offset API.
+See [Ephys data](loading-ephys.md) for supported file formats, Kilosort folder setup, and channel mapping details. See [TrialTree — Stream offsets](trialtree.md#stream-offsets) for the full offset API.
 
 ---
 

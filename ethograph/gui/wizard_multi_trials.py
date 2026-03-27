@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import traceback
 from pathlib import Path
 
 import numpy as np
@@ -17,6 +18,7 @@ from qtpy.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QSplitter,
@@ -424,7 +426,7 @@ class TrialsPage(QWidget):
             self._update_import_table()
             self._refresh_table()
         except Exception as e:
-            from qtpy.QtWidgets import QMessageBox
+            traceback.print_exc()
             QMessageBox.critical(self, "Import error", f"Failed to read file:\n{e}")
 
     def _paste_from_clipboard(self):
@@ -443,7 +445,7 @@ class TrialsPage(QWidget):
             self._update_import_table()
             self._refresh_table()
         except Exception as e:
-            from qtpy.QtWidgets import QMessageBox
+            traceback.print_exc()
             QMessageBox.critical(self, "Paste error", f"Failed to parse clipboard:\n{e}")
 
     def _clear_imported(self):

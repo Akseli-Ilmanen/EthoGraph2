@@ -343,6 +343,34 @@ def extract_video_motion(
     hwaccel: str | None = None,
     verbose: bool = True,
 ) -> xr.DataArray:
+    """Compute per-frame pixel difference (motion energy) from a video file.
+
+    Uses ffmpeg ``signalstats`` filter (YDIF — mean absolute luma difference
+    between consecutive frames).  Frames are spatially downscaled to
+    ``scale_width`` pixels wide before analysis.
+
+    Parameters
+    ----------
+    video_path : Path or str
+        Path to the input video file.
+    fps : float
+        Frame rate used to build the time coordinate. Must match the actual
+        video frame rate — do not hard-code a default.
+    time_coord_name : str
+        Name given to the time dimension in the returned DataArray.
+    scale_width : int
+        Width (px) to downscale frames to before computing motion.
+    hwaccel : str or None
+        ffmpeg hardware acceleration backend (e.g. ``"cuda"``). On macOS,
+        ``"videotoolbox"`` is used automatically when None.
+    verbose : bool
+        If True, stream ffmpeg output to the terminal in real time.
+
+    Returns
+    -------
+    xr.DataArray
+        1-D array of motion values with a time coordinate in seconds.
+    """
     video_path = Path(video_path)
     
     if not video_path.exists():
@@ -401,8 +429,36 @@ def compute_aux_velocity_and_speed(
     time_intan: np.ndarray,
     fps: float = 30000.0,
     mov_mean_window1: int = 6001,
-    mov_mean_window2: int = 15001
+    mov_mean_window2: int = 15001,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Compute drift-corrected velocity and scalar speed from accelerometer data.
+
+    Removes slow drift with rolling-mean baselines, integrates acceleration
+    to velocity via cumulative trapezoidal integration (matches MATLAB
+    ``cumtrapz``), and returns the L2 norm of velocity as scalar speed.
+
+    Parameters
+    ----------
+    a_aux_trial : np.ndarray
+        (N, D) accelerometer array — N time samples, D axes.
+    time_intan : np.ndarray
+        (N,) timestamps in seconds.
+    fps : float
+        Sampling rate of the recording in Hz.
+    mov_mean_window1 : int
+        Rolling-mean window (samples) for drift removal from acceleration.
+    mov_mean_window2 : int
+        Rolling-mean window (samples) for drift removal from velocity.
+
+    Returns
+    -------
+    a_corr : np.ndarray
+        Drift-corrected acceleration (N, D).
+    v_corr : np.ndarray
+        Drift-corrected velocity (N, D).
+    speed : np.ndarray
+        L2 norm of ``v_corr`` — scalar speed at each time point (N,).
+    """
     if a_aux_trial.shape[0] != len(time_intan):
         raise ValueError(
             f"Shape mismatch: a_aux_trial has {a_aux_trial.shape[0]} samples "

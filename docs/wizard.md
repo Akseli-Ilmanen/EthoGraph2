@@ -134,7 +134,7 @@ Answer a few questions to get personalised setup instructions for your data.
       </label>
       <label class="wchoice">
         <input type="checkbox" name="wdtype" value="pose" onchange="wOnChk(this,'pose')">
-        <div class="wclbl"><strong>Pose estimation</strong><span>DeepLabCut, SLEAP, LightningPose — .h5 or .csv files</span></div>
+        <div class="wclbl"><strong>Pose estimation</strong><span>DeepLabCut, SLEAP, LightningPose — .h5/.csv/... files</span></div>
       </label>
       <label class="wchoice">
         <input type="checkbox" name="wdtype" value="audio" onchange="wOnChk(this,'audio')">
@@ -147,6 +147,10 @@ Answer a few questions to get personalised setup instructions for your data.
       <label class="wchoice">
         <input type="checkbox" name="wdtype" value="numpy" onchange="wOnChk(this,'numpy')">
         <div class="wclbl"><strong>Custom feature array</strong><span>Pre-computed signals stored as .npy</span></div>
+      </label>
+      <label class="wchoice">
+        <input type="checkbox" name="wdtype" value="other" onchange="wOnChk(this,'other')">
+        <div class="wclbl"><strong>Other / custom format</strong><span>Format not listed above — convert to a supported format</span></div>
       </label>
     </div>
 
@@ -178,11 +182,11 @@ Answer a few questions to get personalised setup instructions for your data.
         </label>
         <label class="wchoice">
           <input type="radio" name="waudsetup" value="multichannel" onchange="wOnRad(this,'audio_setup')">
-          <div class="wclbl"><strong>Multiple microphones in one multichannel file</strong><span>All mics stored in a single .wav with multiple channels</span></div>
+          <div class="wclbl"><strong>Multiple microphones in one multichannel file</strong><span>E.g. all mics stored in a single .wav file with multiple channels</span></div>
         </label>
         <label class="wchoice">
           <input type="radio" name="waudsetup" value="multi_files" onchange="wOnRad(this,'audio_setup')">
-          <div class="wclbl"><strong>Multiple .wav files</strong><span>One separate file per microphone</span></div>
+          <div class="wclbl"><strong>Multiple sound files</strong><span>One separate file per microphone</span></div>
         </label>
       </div>
       <div class="wval" id="wvaud">Please answer this question.</div>
@@ -274,7 +278,7 @@ function wValP1(){
 function wNext(){
   wCv();
   if(cur===0){if(!ws.nwb){document.getElementById('wv0').classList.add('won');return;}if(ws.nwb==='yes'){wRes();return;}cur=1;wShow('wp1');wProg(1);document.getElementById('wBP').style.display='';document.getElementById('wBN').textContent='Next →';return;}
-  if(cur===1){if(!wValP1())return;cur=2;wShow('wp2');wProg(2);document.getElementById('wBN').textContent='See my setup →';return;}
+  if(cur===1){if(!wValP1())return;if(ws.dtypes.size===1&&ws.dtypes.has('other')){wRes();return;}cur=2;wShow('wp2');wProg(2);document.getElementById('wBN').textContent='See my setup →';return;}
   if(cur===2){if(!ws.trials){document.getElementById('wv2').classList.add('won');return;}wRes();}
 }
 window.wNext=wNext;
@@ -308,10 +312,11 @@ function wRes(){
 function wBuild(){
   if(ws.nwb==='yes')return rNWB();
   var d=ws.dtypes;
-  var needsScript=ws.trials==='yes'||ws.cameras==='multi'||ws.audio_setup==='multi_files';
-  if(d.has('ephys')&&ws.trials==='yes')return rEphysMulti();
+  if(d.has('other'))return rOther();
+  var needsMultiSetup=ws.trials==='yes'||ws.cameras==='multi'||ws.audio_setup==='multi_files';
+  if(d.has('ephys')&&needsMultiSetup)return rEphysMulti();
   if(d.has('ephys'))return rEphysSingle();
-  if(needsScript)return rScript();
+  if(needsMultiSetup)return rScript();
   if(d.size===1&&d.has('audio'))return rAudioOnly();
   if(d.size===1&&d.has('numpy'))return rNumpy();
   return rSimple();
@@ -324,7 +329,18 @@ function tags(){
   if(d.has('audio'))t+='<span class="wbdg wba">Audio</span>';
   if(d.has('ephys'))t+='<span class="wbdg wbb">Ephys</span>';
   if(d.has('numpy'))t+='<span class="wbdg wbb">Numpy</span>';
+  if(d.has('other'))t+='<span class="wbdg wbb">Other</span>';
   return '<div class="wtags">'+t+'</div>';
+}
+
+function rOther(){
+  return s('intro','<h3>Data format not listed above</h3><div class="wtags"><span class="wbdg wbb">Other</span></div><p>EthoGraph doesn\'t have a built-in loader for your format. Convert or wrap your data using one of these options:</p>')
+  +s('steps','<h4>Options</h4><ul style="margin-left:1.2rem;line-height:1.85;font-size:.91rem;">'
+  +'<li><strong>A — Convert to <code>.npy</code></strong>: Save as a numpy array and use the <em>4) Generate from npy file</em> dialog. For high-SR data that loads slowly, enable the <strong>Downsample</strong> checkbox in the I/O widget.</li>'
+  +'<li><strong>B — Convert to <code>.wav</code></strong>: For high-SR periodic data you want to visualise quickly (e.g. LFP, EMG, pressure). Use <code>audioio.write_audio()</code> to convert, then load as audio. Min/max downsampling makes waveform and spectrogram rendering fast — no manual downsample needed.</li>'
+  +'<li><strong>C — xarray script</strong>: For multi-dimensional arrays (&gt;2-D). Wrap your data in an <code>xr.Dataset</code> with <code>eto.dataset_to_basic_trialtree()</code>. For high-SR data, use the Downsample checkbox or <code>eto.downsample_trialtree(dt, factor)</code> before saving.</li>'
+  +'</ul>')
+  +s('links','<h4>Full guide</h4><ul><li><a target="_blank" rel="noopener" href="../loading-other/">Other / custom formats</a></li></ul>');
 }
 function s(c,h){return '<div class="wrsec '+c+'">'+h+'</div>';}
 
@@ -332,54 +348,56 @@ var WLAUNCH='<li><a target="_blank" rel="noopener" href="../installation/">Insta
 +'<li>Launch EthoGraph — double-click the desktop shortcut, or run: <code>conda activate ethograph &amp;&amp; ethograph launch</code></li>';
 function rNWB(){
   return s('intro','<h3>NWB — no extra setup needed</h3><p>EthoGraph reads <code>.nwb</code> files directly.</p>')
-  +s('steps','<h4>Steps</h4><ol>'+WLAUNCH+<li>In the <strong>I/O widget</strong>, click the file browser next to <em>Session data</em></li><li>Select your <code>.nwb</code> file</li><li><em>Optional:</em> select a local video folder if videos are not embedded</li><li>Click <strong>Load</strong></li></ol>')
+  +s('steps','<h4>Steps</h4><ol>'+WLAUNCH+'<li>In the <strong>I/O widget</strong>, click the file browser next to <em>Session data</em></li><li>Select your <code>.nwb</code> file</li><li><em>Optional:</em> select a local video folder if videos are not embedded</li><li>Click <strong>Load</strong></li></ol>')
   +s('links','<h4>Relevant docs</h4><ul><li><a target="_blank" rel="noopener" href="../data-loading/">Loading data</a></li></ul>');
 }
 
 function rSimple(){
   var d=ws.dtypes;
   var hasPose=d.has('pose'),hasAud=d.has('audio');
-  var fmt=hasPose?'From a pose file':hasAud?'From an audio file':'From a numpy file';
+  var wizLabel=hasPose?'1) Generate from pose file (DeepLabCut, SLEAP, ...)':hasAud?'3) Generate from audio file':'4) Generate from npy file';
   var audNote='';
   if(hasAud&&ws.audio_setup==='multichannel')audNote='<li>For <strong>Audio file</strong>, select your multichannel <code>.wav</code></li>';
-  else if(hasAud&&ws.audio_setup==='single'&&(d.has('video')||hasPose))audNote='<li>In <em>Common fields</em>, also set the <strong>Audio file</strong></li>';
+  else if(hasAud&&ws.audio_setup==='single'&&(d.has('video')||hasPose))audNote='<li>Also set <strong>Audio file</strong></li>';
   return s('intro','<h3>Single recording — use the Create dialog</h3>'+tags()+'<p>The built-in <em>➕Create with own data</em> dialog handles this without any scripting.</p>')
-  +s('steps','<h4>Steps</h4><ol>'+WLAUNCH+<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li><li>Select format: <strong>'+fmt+'</strong></li><li>Fill in the file paths</li>'+audNote+'<li>Click <strong>Create</strong> — fields are auto-populated, then click <strong>Load</strong></li></ol>')
-  +s('links','<h4>Relevant docs</h4><ul><li><a target="_blank" rel="noopener" href="../data-loading/#option-2-create-a-trialsncfrom-your-own-data">Loading data — Create dialog</a></li>'+(hasPose?'<li><a target="_blank" rel="noopener" href="../data-loading/#1-from-a-pose-file">From a pose file</a></li>':'')+(!hasPose&&hasAud?'<li><a target="_blank" rel="noopener" href="../data-loading/#3-from-an-audio-file">From an audio file</a></li>':'')+'<li><a target="_blank" rel="noopener" href="../data-loading/#try-the-gui-with-template-datasets">Try template datasets first</a></li></ul>');
+  +s('steps','<h4>Steps</h4><ol>'+WLAUNCH+'<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li><li>Under <strong>Single trial</strong>, select: <strong>'+wizLabel+'</strong></li><li>Click <strong>Next →</strong> — the dialog opens</li><li>Fill in the file paths</li>'+audNote+'<li>Click <strong>Generate .nc file</strong> — fields auto-populate, then click <strong>Load</strong></li></ol>')
+  +s('links','<h4>Relevant docs</h4><ul>'+(hasPose?'<li><a target="_blank" rel="noopener" href="../loading-pose/">From a pose file</a></li>':(!hasPose&&hasAud?'<li><a target="_blank" rel="noopener" href="../loading-audio/">From an audio file</a></li>':'<li><a target="_blank" rel="noopener" href="../loading-numpy/">From a numpy file</a></li>'))+'<li><a target="_blank" rel="noopener" href="../data-loading/#try-the-gui-with-template-datasets">Try template datasets first</a></li></ul>');
 }
 
 function rAudioOnly(){
   var mc=ws.audio_setup==='multichannel';
   return s('intro','<h3>Audio-only mode</h3><div class="wtags"><span class="wbdg wba">Audio</span></div><p>EthoGraph supports datasets with no video. A time slider replaces the video player.'+(mc?' Your multichannel file is loaded as-is.':'')+'</p>')
-  +s('steps','<h4>Steps</h4><ol>'+WLAUNCH+<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li><li>Select format: <strong>From an audio file</strong></li><li>Select your <code>'+(mc?'multichannel .wav':'.wav / .mp3')+'</code> file</li><li>Click <strong>Create</strong>, then <strong>Load</strong></li></ol>')
-  +s('links','<h4>Relevant docs</h4><ul><li><a target="_blank" rel="noopener" href="../data-loading/#3-from-an-audio-file">From an audio file</a></li><li><a target="_blank" rel="noopener" href="../data-requirements/#audio-only-no-video">Data requirements — audio-only</a></li></ul>');
+  +s('steps','<h4>Steps</h4><ol>'+WLAUNCH+'<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li><li>Under <strong>Single trial</strong>, select: <strong>3) Generate from audio file</strong></li><li>Click <strong>Next →</strong> — the dialog opens</li><li>Set your <code>'+(mc?'multichannel .wav':'.wav / .mp3')+'</code> file</li><li>Click <strong>Generate .nc file</strong> — fields auto-populate, then click <strong>Load</strong></li></ol>')
+  +s('links','<h4>Relevant docs</h4><ul><li><a target="_blank" rel="noopener" href="../loading-audio/">From an audio file</a></li><li><a target="_blank" rel="noopener" href="../data-requirements/#audio-only-no-video">Data requirements — audio-only</a></li></ul>');
 }
 
 function rNumpy(){
   return s('intro','<h3>Custom numpy feature</h3><div class="wtags"><span class="wbdg wbb">Numpy</span></div><p>For pre-computed signals stored as <code>.npy</code>. Shape: <code>(n_samples, n_variables)</code> or transpose.</p>')
-  +s('steps','<h4>Steps</h4><ol>'+WLAUNCH+<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li><li>Select format: <strong>From a numpy file</strong></li><li>Set the <code>.npy</code> file and the <strong>sampling rate</strong></li><li>Click <strong>Create</strong>, then <strong>Load</strong></li></ol>')
-  +s('links','<h4>Relevant docs</h4><ul><li><a target="_blank" rel="noopener" href="../data-loading/#4-from-a-numpy-file">From a numpy file</a></li></ul>');
+  +s('steps','<h4>Steps</h4><ol>'+WLAUNCH+'<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li><li>Under <strong>Single trial</strong>, select: <strong>4) Generate from npy file</strong></li><li>Click <strong>Next →</strong> — the dialog opens</li><li>Set the <code>.npy</code> file and the <strong>Data sampling rate</strong></li><li>Click <strong>Generate .nc file</strong> — fields auto-populate, then click <strong>Load</strong></li></ol>')
+  +s('links','<h4>Relevant docs</h4><ul><li><a target="_blank" rel="noopener" href="../loading-numpy/">From a numpy file</a></li></ul>');
 }
 
 function rEphysSingle(){
   return s('intro','<h3>Electrophysiology — single session</h3><div class="wtags"><span class="wbdg wbb">Ephys</span></div><p>Use the <em>➕Create with own data</em> dialog. Video and audio are optional add-ons.</p>')
-  +s('steps','<h4>Steps</h4><ol>'+WLAUNCH+<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li><li>Select format: <strong>From an ephys recording</strong></li><li>Set your ephys file (<code>.rhd</code>, <code>.abf</code>, <code>.oebin</code>, …)</li><li><em>Optional:</em> point to a Kilosort folder</li><li>Click <strong>Create</strong>, then <strong>Load</strong></li></ol>')
-  +s('links','<h4>Relevant docs</h4><ul><li><a target="_blank" rel="noopener" href="../data-loading/#5-from-an-ephys-recording">From an ephys recording</a></li><li><a target="_blank" rel="noopener" href="../ephys-data/">Ephys data — formats &amp; Kilosort</a></li></ul>');
+  +s('steps','<h4>Steps</h4><ol>'+WLAUNCH+'<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li><li>Under <strong>Single trial</strong>, select: <strong>5) Generate from ephys file and/or kilosort folder</strong></li><li>Click <strong>Next →</strong> — the dialog opens</li><li>Set <strong>Ephys file</strong> and/or <strong>Kilosort folder</strong></li><li><em>Optional:</em> add <strong>Video file</strong> or <strong>Audio file</strong></li><li>Click <strong>Generate .nc file</strong> — fields auto-populate, then click <strong>Load</strong></li></ol>')
+  +s('links','<h4>Relevant docs</h4><ul><li><a target="_blank" rel="noopener" href="../loading-ephys/">Ephys data — formats &amp; Kilosort</a></li></ul>');
 }
 
 function rScript(){
   var reason=ws.cameras==='multi'?'You recorded from <strong>multiple cameras</strong>, each with its own video and pose file.':ws.audio_setup==='multi_files'?'You have <strong>multiple separate audio files</strong> (one per microphone).':'Your data spans <strong>multiple trials</strong>.';
   var camNote=ws.cameras==='multi'?'<li>Set video per camera: <code>dt.set_media("video", [[cam1.mp4, cam2.mp4]])</code></li><li>Set pose per camera: <code>dt.set_media("pose", [[cam1.h5, cam2.h5]])</code></li>':'';
   var audNote=ws.audio_setup==='multi_files'?'<li>Set mic files: <code>dt.set_media("audio", [[mic1.wav, mic2.wav]])</code></li>':ws.audio_setup==='multichannel'?'<li>Set audio: <code>dt.set_media("audio", [[recording.wav]])</code></li>':'';
-  return s('intro','<h3>Custom trials.nc — short Python script needed</h3>'+tags()+'<p>'+reason+' The Create dialog only handles single files, so you\'ll write a short script using <code>eto.from_datasets()</code>.</p>')
-  +s('steps','<h4>Steps</h4><ol><li><a target="_blank" rel="noopener" href="../installation/">Install EthoGraph</a> if you haven\'t already</li><li>Read the full example in <a target="_blank" rel="noopener" href="../data-requirements/#full-example-multi-trial-dataset">Data requirements</a></li><li>Create one <code>xr.Dataset</code> per trial with features tagged <code>type="features"</code></li><li>Call <code>eto.from_datasets(datasets)</code></li>'+camNote+audNote+'<li>Save: <code>dt.save("trials.nc")</code></li><li>Launch EthoGraph and load the <code>.nc</code> file and your media folders</li></ol>')
-  +s('links','<h4>Relevant docs</h4><ul><li><a target="_blank" rel="noopener" href="../data-requirements/#full-example-multi-trial-dataset">Data requirements — full example</a></li><li><a target="_blank" rel="noopener" href="../trialtree/">TrialTree reference</a></li><li><a target="_blank" rel="noopener" href="../tutorials/">Tutorial notebooks</a></li></ul>');
+  return s('intro','<h3>Multi-trial dataset</h3>'+tags()+'<p>'+reason+' You have two options: use the <strong>built-in GUI wizard</strong> (no coding) or write a short Python script.</p>')
+  +s('steps','<h4>Option A — GUI wizard (no coding)</h4><ol>'+WLAUNCH+'<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li><li>Select <strong>Multiple trials</strong></li><li>Check the modalities you want (Video, Pose, Audio, …) and choose <em>Files aligned to trial period</em> or <em>Continuous recording across session</em></li><li>Configure file patterns, device labels, and offsets per modality</li><li>Set trial boundaries and output path, then click <strong>Generate .nc file</strong></li></ol>')
+  +s('steps','<h4>Option B — Python script</h4><ol><li><a target="_blank" rel="noopener" href="../installation/">Install EthoGraph</a> if you haven\'t already</li><li>Follow the setup guide: <a target="_blank" rel="noopener" href="../loading-script/">Multi-trial setup</a></li><li>Create one <code>xr.Dataset</code> per trial with features tagged <code>type="features"</code></li><li>Call <code>eto.from_datasets(datasets)</code></li>'+camNote+audNote+'<li>Save: <code>dt.save("trials.nc")</code></li><li>Launch EthoGraph and load the <code>.nc</code> file and your media folders</li></ol>')
+  +s('links','<h4>Relevant docs</h4><ul><li><a target="_blank" rel="noopener" href="../loading-script/">Multi-trial setup guide (scripting)</a></li><li><a target="_blank" rel="noopener" href="../trialtree/">TrialTree reference</a></li><li><a target="_blank" rel="noopener" href="../tutorials/">Tutorial notebooks</a></li></ul>');
 }
 
 function rEphysMulti(){
-  return s('intro','<h3>Ephys + multi-trial dataset</h3><div class="wtags"><span class="wbdg wbb">Ephys</span><span class="wbdg wbg">Multi-trial</span></div><p>Ephys is a session-wide stream. Create a <code>trials.nc</code> for the behavioural structure and point EthoGraph to the ephys file separately in the GUI.</p>')
-  +s('steps','<h4>Steps</h4><ol><li><a target="_blank" rel="noopener" href="../installation/">Install EthoGraph</a> if you haven\'t already</li><li>Build your <code>trials.nc</code> with <code>eto.from_datasets()</code></li><li>If clocks differ: <code>dt.set_stream_offset("ephys", offset_s)</code></li><li>Save: <code>dt.save("trials.nc")</code></li><li>Launch EthoGraph, load the <code>.nc</code>, then separately select the ephys file / Kilosort folder</li></ol>')
-  +s('links','<h4>Relevant docs</h4><ul><li><a target="_blank" rel="noopener" href="../ephys-data/">Ephys data</a></li><li><a target="_blank" rel="noopener" href="../data-requirements/#ephys-with-videoaudio-alignment">Data requirements — ephys alignment</a></li><li><a target="_blank" rel="noopener" href="../trialtree/#stream-offsets">TrialTree — stream offsets</a></li></ul>');
+  return s('intro','<h3>Ephys + multi-trial dataset</h3><div class="wtags"><span class="wbdg wbb">Ephys</span><span class="wbdg wbg">Multi-trial</span></div><p>Ephys is a session-wide stream. Create a <code>trials.nc</code> for the behavioural structure and point EthoGraph to the ephys file separately in the GUI. You have two options:</p>')
+  +s('steps','<h4>Option A — GUI wizard (no coding)</h4><ol>'+WLAUNCH+'<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li><li>Select <strong>Multiple trials</strong></li><li>Check <strong>Ephys</strong> (session-wide) plus any other modalities</li><li>Configure file patterns and offsets, then click <strong>Generate .nc file</strong></li><li>After loading, separately select the ephys file / Kilosort folder in the I/O widget</li></ol>')
+  +s('steps','<h4>Option B — Python script</h4><ol><li><a target="_blank" rel="noopener" href="../installation/">Install EthoGraph</a> if you haven\'t already</li><li>Build your <code>trials.nc</code> with <code>eto.from_datasets()</code></li><li>If clocks differ: <code>dt.set_stream_offset("ephys", offset_s)</code></li><li>Save: <code>dt.save("trials.nc")</code></li><li>Launch EthoGraph, load the <code>.nc</code>, then separately select the ephys file / Kilosort folder</li></ol>')
+  +s('links','<h4>Relevant docs</h4><ul><li><a target="_blank" rel="noopener" href="../loading-ephys/">Ephys data</a></li><li><a target="_blank" rel="noopener" href="../loading-script/">Multi-trial setup guide (scripting)</a></li><li><a target="_blank" rel="noopener" href="../trialtree/#stream-offsets">TrialTree — stream offsets</a></li></ul>');
 }
 })();
 </script>

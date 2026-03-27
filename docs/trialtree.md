@@ -2,7 +2,7 @@
 
 `TrialTree` ([source code](https://github.com/Akseli-Ilmanen/EthoGraph/blob/main/ethograph/utils/trialtree.py)) is a thin wrapper around [xarray.DataTree](https://docs.xarray.dev/en/stable/user-guide/data-structures.html#datatree) that makes it easier to work with multi-trial behavioural datasets. Each trial is stored as a child node containing an `xr.Dataset`, and the tree provides convenience methods for accessing, iterating, and modifying trials.
 
-The dataset format builds on [Movement](https://movement.neuroinformatics.dev/latest/user_guide/movement_dataset.html) conventions for representing pose estimation and behavioural time series. For the xarray Dataset structure expected inside each trial (dimensions, coordinates, `attrs["type"]`, etc.), see [Data Format](data_format.md).
+The dataset format builds on [Movement](https://movement.neuroinformatics.dev/latest/user_guide/movement_dataset.html) conventions for representing pose estimation and behavioural time series. For the xarray Dataset structure expected inside each trial (dimensions, coordinates, `attrs["type"]`, etc.), see [Data Format](data-requirements.md).
 
 ```
 TrialTree (root)
@@ -61,7 +61,7 @@ session_table = pd.DataFrame({
 dt = eto.from_datasets(datasets, session_table=session_table)
 ```
 
-See the [tutorials](https://github.com/Akseli-Ilmanen/EthoGraph/tree/main/tutorials) for full worked examples of creating `.nc` files from different data sources.
+See the [tutorials](tutorials.md) for full worked examples of creating `.nc` files from different data sources.
 
 ---
 
@@ -74,7 +74,7 @@ Media filenames are stored in the session node via `dt.set_media()`. Call it onc
 | `"video"` | per-trial | `"camera"` | |
 | `"audio"` | per-trial | `"microphone"` | |
 | `"pose"` | per-trial | `"camera"` | |
-| `"ephys"` | session-wide | *(none)* | Selected in GUI; no `set_media()` call needed. See [Ephys data](ephys-data.md). |
+| `"ephys"` | session-wide | *(none)* | Selected in GUI; no `set_media()` call needed. See [Ephys data](loading-ephys.md). |
 
 ### Per-trial files
 
@@ -123,7 +123,7 @@ dt.set_media("video",
 
 ### Mixed alignment
 
-A common real-world pattern: video and pose are per-trial, while audio runs continuously across the session. Ephys is always session-wide and is selected directly in the GUI — no `set_media("ephys", ...)` call needed. If the ephys clock differs from the reference, set a stream offset (see [Ephys data](ephys-data.md) and [Stream offsets](#stream-offsets)).
+A common real-world pattern: video and pose are per-trial, while audio runs continuously across the session. Ephys is always session-wide and is selected directly in the GUI — no `set_media("ephys", ...)` call needed. If the ephys clock differs from the reference, set a stream offset (see [Ephys data](loading-ephys.md) and [Stream offsets](#stream-offsets)).
 
 ```python
 dt = eto.from_datasets(ds_list, session_table=session_table)

@@ -73,15 +73,16 @@ print(df.to_string(index=False))
 | `labels` | Integer label class (0 = background is excluded). |
 | `onset_s` | Segment start in trial-relative seconds. |
 | `offset_s` | Segment end in trial-relative seconds. |
-| `start_time` | Absolute trial start in session time (only present when the TrialTree session table contains `start_time`). |
-| `onset_global` | `start_time + onset_s` -- segment start in absolute session time. |
-| `offset_global` | `start_time + offset_s` -- segment end in absolute session time. |
+| `trial_onset` | Absolute trial start in session time|
+| `trial_offset` | (Optional) Absolute trial stop in session time 
+| `onset_global` | `trial_onset + onset_s` -- segment start in absolute session time. |
+| `offset_global` | `trial_onset + offset_s` -- segment end in absolute session time. |
 | `duration` | `offset_s - onset_s` in seconds. |
 | `sequence_idx` | Position of this segment within the trial's label sequence. |
 | `sequence` | Dash-joined string of all label IDs in the trial (e.g. `"1-2-1"`). Useful for sequence analysis. |
 | *(extra)* | Any keys passed via `keep_attrs` (e.g. `stimulus`, `num_pellets`) are appended as columns from `ds.attrs`. |
 
-The `start_time`, `onset_global`, and `offset_global` columns only appear
+The `trial_onset`, `trial_offset`, `onset_global`, and `offset_global` columns only appear
 when the TrialTree has a session table (via `dt.session`) containing `start_time`. For purely
 video/audio sessions without session-absolute timing, these columns are absent.
 

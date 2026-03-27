@@ -33,14 +33,14 @@
             === "MacOS"
                 On MacOS you can use [homebrew](https://formulae.brew.sh/formula/ffmpeg) and type `brew install ffmpeg` into your terminal
             === "Linux"
-                Instructions depend on your system, but please do not hesitate to reach out if you run into issues. 
+                See [ffmpeg download page](https://ffmpeg.org/download.html).
 
 2. Install Anaconda. <br>
      - Open your web browser and go to the official [Anaconda download page](https://www.anaconda.com/download).
      - Download and execute the Anaconda Installer for your operating system (Windows, macOS, or Linux). During installation, make sure you check the box **"Add Anaconda to PATH"**. This enables you to run `conda` commands in your terminal.
      - Restart your terminal.
 
-3.  ```bash
+3.  ```
     git clone https://github.com/Akseli-Ilmanen/ethograph
     ```
     <br>

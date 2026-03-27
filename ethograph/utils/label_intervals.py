@@ -41,9 +41,39 @@ def dense_to_intervals(
     time_coord: np.ndarray,
     individuals: list[str],
 ) -> pd.DataFrame:
-    """Convert dense (time, individuals) label array to intervals DataFrame.
+    """
+    Convert dense (time, individuals) label array to intervals DataFrame.
 
-    Handles both 1-D (single individual) and 2-D arrays.
+    Parameters
+    ----------
+    dense_array : np.ndarray
+        Dense label array of shape (n_samples, n_individuals) or (n_samples,).
+    time_coord : np.ndarray
+        Array of time values corresponding to the first axis of `dense_array`.
+    individuals : list of str
+        List of individual identifiers, length must match n_individuals.
+
+    Returns
+    -------
+    pd.DataFrame
+        Intervals DataFrame with columns: onset_s, offset_s, labels, individual.
+
+    Raises
+    ------
+    ValueError
+        If dense_array shape does not match individuals.
+
+    Notes
+    -----
+    Handles both 1-D (single individual) and 2-D arrays. Consecutive identical labels are merged into intervals.
+
+    Examples
+    --------
+    >>> dense = np.array([[0, 1], [0, 1], [2, 1]])
+    >>> time = np.array([0.0, 0.1, 0.2])
+    >>> individuals = ['A', 'B']
+    >>> df = dense_to_intervals(dense, time, individuals)
+    >>> print(df)
     """
     dense_array = np.asarray(dense_array)
     time_coord = np.asarray(time_coord)
@@ -73,10 +103,42 @@ def intervals_to_dense(
     individuals: list[str],
     n_samples: int | None = None,
 ) -> np.ndarray:
-    """Convert intervals DataFrame to dense (n_samples, n_individuals) array.
+    """
+    Convert intervals DataFrame to dense (n_samples, n_individuals) array.
 
-    Args:
-        n_samples: If given, overrides the duration-based calculation.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Intervals DataFrame with columns: onset_s, offset_s, labels, individual.
+    sample_rate : float
+        Sampling rate in Hz.
+    duration : float
+        Total duration in seconds.
+    individuals : list of str
+        List of individual identifiers.
+    n_samples : int, optional
+        If given, overrides the duration-based calculation for number of samples.
+
+    Returns
+    -------
+    np.ndarray
+        Dense label array of shape (n_samples, n_individuals).
+
+    Notes
+    -----
+    If an interval's individual is not in the individuals list, it is skipped.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     'onset_s': [0.0, 0.2],
+    ...     'offset_s': [0.1, 0.3],
+    ...     'labels': [1, 2],
+    ...     'individual': ['A', 'B']
+    ... })
+    >>> arr = intervals_to_dense(df, 10, 0.3, ['A', 'B'])
+    >>> arr.shape
+    (4, 2)
     """
     if n_samples is None:
         n_samples = int(round(duration * sample_rate)) + 1
@@ -98,7 +160,21 @@ def intervals_to_dense(
 
 
 def intervals_to_xr(df: pd.DataFrame) -> xr.Dataset:
-    """Convert intervals DataFrame to xarray Dataset with 'segment' dimension."""
+    """Convert an intervals DataFrame to an xarray Dataset.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Intervals with columns ``onset_s``, ``offset_s``, ``labels``,
+        ``individual``.
+
+    Returns
+    -------
+    xr.Dataset
+        Dataset with ``segment`` dimension and variables onset_s, offset_s,
+        labels, individual.  Returns an empty dataset with the correct dtypes
+        when ``df`` is empty.
+    """
     if df.empty:
         return xr.Dataset(
             {
@@ -121,7 +197,20 @@ def intervals_to_xr(df: pd.DataFrame) -> xr.Dataset:
 
 
 def xr_to_intervals(ds: xr.Dataset) -> pd.DataFrame:
-    """Convert xarray Dataset with 'segment' dimension back to intervals DataFrame."""
+    """Convert an xarray Dataset back to an intervals DataFrame.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Must have an ``onset_s`` variable (``segment`` dimension).
+        Typically produced by :func:`intervals_to_xr`.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: ``onset_s``, ``offset_s``, ``labels``, ``individual``.
+        Returns an empty DataFrame if ``onset_s`` is absent.
+    """
     if "onset_s" not in ds.data_vars:
         return empty_intervals()
     df = pd.DataFrame(
@@ -142,8 +231,29 @@ def add_interval(
     labels: int,
     individual: str,
 ) -> pd.DataFrame:
-    """Add an interval, resolving overlaps for the same individual.
+    """
+    Add an interval, resolving overlaps for the same individual.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Existing intervals DataFrame.
+    onset_s : float
+        Start time in seconds.
+    offset_s : float
+        End time in seconds.
+    labels : int
+        Label class ID (nonzero).
+    individual : str
+        Individual identifier.
+
+    Returns
+    -------
+    pd.DataFrame
+        Updated intervals DataFrame with overlaps resolved.
+
+    Notes
+    -----
     Any existing intervals that overlap [onset_s, offset_s] for the same
     individual are split, trimmed, or deleted as needed.
     """
@@ -185,12 +295,42 @@ def add_interval(
 
 
 def delete_interval(df: pd.DataFrame, idx: int) -> pd.DataFrame:
-    """Drop interval by DataFrame index."""
+    """
+    Drop interval by DataFrame index.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Intervals DataFrame.
+    idx : int
+        Index of the interval to drop.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with the specified interval removed.
+    """
     return df.drop(index=idx).reset_index(drop=True)
 
 
 def find_interval_at(df: pd.DataFrame, time_s: float, individual: str) -> int | None:
-    """Return DataFrame index of interval containing time_s for given individual."""
+    """
+    Return DataFrame index of interval containing time_s for given individual.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Intervals DataFrame.
+    time_s : float
+        Time in seconds.
+    individual : str
+        Individual identifier.
+
+    Returns
+    -------
+    int or None
+        Index of the interval if found, else None.
+    """
     mask = (
         (df["individual"] == individual)
         & (df["onset_s"] <= time_s)
@@ -204,7 +344,21 @@ def find_interval_at(df: pd.DataFrame, time_s: float, individual: str) -> int | 
 
 
 def get_interval_bounds(df: pd.DataFrame, idx: int) -> tuple[float, float, int]:
-    """Return (onset_s, offset_s, labels) for interval at index."""
+    """
+    Return (onset_s, offset_s, labels) for interval at index.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Intervals DataFrame.
+    idx : int
+        Index of the interval.
+
+    Returns
+    -------
+    tuple
+        (onset_s, offset_s, labels) for the interval.
+    """
     row = df.loc[idx]
     return float(row["onset_s"]), float(row["offset_s"]), int(row["labels"])
 
@@ -214,7 +368,23 @@ def purge_short_intervals(
     min_duration_s: float,
     label_thresholds_s: dict[int, float] | None = None,
 ) -> pd.DataFrame:
-    """Drop intervals shorter than threshold (in seconds)."""
+    """
+    Drop intervals shorter than threshold (in seconds).
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Intervals DataFrame.
+    min_duration_s : float
+        Minimum duration in seconds for intervals to keep.
+    label_thresholds_s : dict[int, float], optional
+        Per-label minimum duration overrides.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with short intervals removed.
+    """
     if label_thresholds_s is None:
         label_thresholds_s = {}
 
@@ -231,7 +401,23 @@ def stitch_intervals(
     max_gap_s: float,
     individual: str | None = None,
 ) -> pd.DataFrame:
-    """Merge adjacent same-label intervals where gap <= threshold."""
+    """
+    Merge adjacent same-label intervals where gap <= threshold.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Intervals DataFrame.
+    max_gap_s : float
+        Maximum gap in seconds to merge intervals.
+    individual : str, optional
+        If given, only merge intervals for this individual.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with merged intervals.
+    """
     if df.empty:
         return df.copy()
 
@@ -278,12 +464,30 @@ def snap_boundaries(
     max_expansion_s: float,
     max_shrink_s: float,
 ) -> pd.DataFrame:
-    """Snap interval onset/offset to nearest changepoint times.
+    """
+    Snap interval onset/offset to nearest changepoint times.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Intervals DataFrame.
+    cp_times : np.ndarray
+        Array of changepoint times (in seconds).
+    max_expansion_s : float
+        Maximum allowed expansion (in seconds) for snapping.
+    max_shrink_s : float
+        Maximum allowed shrink (in seconds) for snapping.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with snapped interval boundaries.
+
+    Notes
+    -----
     For each boundary, finds the nearest CP time and snaps if the move is
     within the expansion/shrink limits. Falls back to the original boundary
     if snapping would create an invalid range (onset >= offset).
-
     Post-processes to resolve overlaps between adjacent intervals of different
     labels by trimming the earlier interval's offset.
     """
@@ -392,15 +596,23 @@ def crowsetta_to_intervals(
     name_to_id: dict[str, int],
     individual: str = "ind0",
 ) -> pd.DataFrame:
-    """Convert a crowsetta annotation file to an intervals DataFrame.
+    """
+    Convert a crowsetta annotation file to an intervals DataFrame.
 
-    Args:
-        file_path: Path to the annotation file.
-        format_name: Crowsetta format name (e.g. 'aud-seq', 'simple-seq').
-        name_to_id: Mapping from string label names to integer IDs.
-        individual: Individual name to assign to all intervals.
+    Parameters
+    ----------
+    file_path : str or Path
+        Path to the annotation file.
+    format_name : str
+        Crowsetta format name (e.g. 'aud-seq', 'simple-seq').
+    name_to_id : dict of str to int
+        Mapping from string label names to integer IDs.
+    individual : str, optional
+        Individual name to assign to all intervals.
 
-    Returns:
+    Returns
+    -------
+    pd.DataFrame
         Intervals DataFrame with columns (onset_s, offset_s, labels, individual).
     """
     import crowsetta
@@ -426,8 +638,21 @@ def crowsetta_to_intervals(
 
 
 def build_mapping_from_labels(string_labels: list[str]) -> dict[str, int]:
-    """Build a name->id mapping from a list of unique string labels.
+    """
+    Build a name->id mapping from a list of unique string labels.
 
+    Parameters
+    ----------
+    string_labels : list of str
+        List of unique string labels.
+
+    Returns
+    -------
+    dict of str to int
+        Mapping from label name to integer ID. 0 is reserved for 'background'.
+
+    Notes
+    -----
     Sorts labels alphabetically; 0 is reserved for 'background'.
     """
     unique = sorted(set(string_labels))
@@ -453,7 +678,16 @@ def write_mapping_file(
     output_path: str | Path,
     name_to_id: dict[str, int],
 ) -> None:
-    """Write a mapping file in '<id> <name>' format."""
+    """
+    Write a mapping file in '<id> <name>' format.
+
+    Parameters
+    ----------
+    output_path : str or Path
+        Output file path.
+    name_to_id : dict of str to int
+        Mapping from label name to integer ID.
+    """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     lines = [f"{idx} {name}" for name, idx in sorted(name_to_id.items(), key=lambda x: x[1])]
@@ -466,9 +700,23 @@ def resolve_crowsetta_mapping(
     mapping_path: str | Path,
     configs_dir: str | Path,
 ) -> tuple[dict[str, int], str | None, str | None]:
-    """Check existing mapping against crowsetta labels; create new if needed.
+    """
+    Check existing mapping against crowsetta labels; create new if needed.
 
-    Returns:
+    Parameters
+    ----------
+    file_path : str or Path
+        Path to the annotation file.
+    format_name : str
+        Crowsetta format name.
+    mapping_path : str or Path
+        Path to the mapping file.
+    configs_dir : str or Path
+        Directory for new mapping files.
+
+    Returns
+    -------
+    tuple
         (name_to_id, new_mapping_path_or_None, warning_message_or_None)
         - name_to_id: the mapping to use for conversion
         - new_mapping_path: path to newly created mapping file, or None if existing was used

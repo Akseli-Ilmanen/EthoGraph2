@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -863,6 +864,7 @@ class NWBImportDialog(QDialog):
         if progress.was_cancelled or error:
             if error:
                 msg = _network_error_message(error) or f"Failed to open NWB:\n{error}"
+                print(f"[ERROR] {msg}", flush=True)
                 QMessageBox.critical(self, "Error", msg)
             return
 
@@ -943,6 +945,7 @@ class NWBImportDialog(QDialog):
 
         if progress.was_cancelled or error:
             if error:
+                print(f"[ERROR] Failed to load NWB data: {error}", flush=True)
                 QMessageBox.critical(self, "Error", f"Failed to load data:\n{error}")
             return
 
@@ -1067,6 +1070,7 @@ class NWBImportDialog(QDialog):
 
         if progress.was_cancelled or error:
             if error:
+                print(f"[ERROR] Download failed: {error}", flush=True)
                 QMessageBox.critical(self, "Error", f"Download failed:\n{error}")
             return None
 

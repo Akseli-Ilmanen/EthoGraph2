@@ -603,6 +603,7 @@ class PSTHDialog(QDialog):
 
             if not ref_times_abs:
                 label_name = self._align_combo.currentText()
+                print(f"[WARNING] Label '{label_name}' has no occurrences in any trial. Falling back to Trial start alignment.", flush=True)
                 QMessageBox.warning(
                     self, "No events found",
                     f"Label '{label_name}' has no occurrences in any trial.\n"

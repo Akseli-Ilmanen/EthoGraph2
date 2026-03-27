@@ -61,7 +61,22 @@ EPHYS_FILE_FILTER = _qt_filter("Ephys files", EPHYS_EXTENSIONS)
 
 
 def find_temporal_dims(ds: xr.Dataset) -> set[str]:
-    """Identify dims that co-occur with any time-like dim in at least one data var."""
+    """Identify non-time dimensions that co-occur with a time dimension.
+
+    Returns the set of dimension names that appear alongside at least one
+    time-like dimension (any dim whose name contains ``"time"``) in the
+    same data variable.  Used to discover extra selection dimensions such
+    as ``space``, ``keypoints``, or ``individuals``.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+
+    Returns
+    -------
+    set[str]
+        Dimension names (excluding time dims themselves).
+    """
     temporal = set()
     time_dims = set()
 
@@ -274,6 +289,33 @@ def _possible_trial_conditions(ds: xr.Dataset, dt: "TrialTree") -> List[str]:
 
     
 def extract_type_vars(ds: xr.Dataset, dt: "TrialTree") -> dict:
+    """Build a typed-variable catalogue for a trial dataset.
+
+    Inspects data variables, coordinates, and dimensions to produce a
+    dictionary that the GUI uses to populate combo boxes and validate the
+    dataset structure.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        A single trial dataset.
+    dt : TrialTree
+        Parent tree (supplies camera/mic lists and common attribute keys).
+
+    Returns
+    -------
+    dict
+        Keys include:
+
+        - ``"individuals"`` — str array of individual identifiers
+        - ``"cameras"`` — str array of camera labels (from session)
+        - ``"mics"`` — str array of microphone labels (from session)
+        - ``"features"`` — list of feature variable names
+        - ``"colors"`` — list of color variable names
+        - ``"changepoints"`` — list of changepoint variable names
+        - ``"trial_conditions"`` — per-trial condition attribute keys
+        - Any extra temporal dimension names → their coordinate values
+    """
     type_vars_dict = {}
 
     if "individuals" in ds.coords:

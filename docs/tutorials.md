@@ -1,7 +1,11 @@
 # Tutorials
 
-These notebooks show by example how to create new datasets or convert existing ones into the [TrialTree](trialtree.md) format.
+These notebooks show how some real-word datasets were converted into the [TrialTree](trialtree.md) format.
 
 Browse and download the tutorial notebooks on GitHub:
+
+{class}xarray.DataArray
+{class}ethograph.utils.trialtree.TrialTree 
+{class}pandas.DataFrame.
 
 [Tutorials on GitHub](https://github.com/Akseli-Ilmanen/EthoGraph/tree/main/tutorials){ .md-button }

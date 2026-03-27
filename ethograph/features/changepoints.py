@@ -248,7 +248,33 @@ def correct_changepoints_automatic(
 # ---------------------------------------------------------------------------
 
 def correct_changepoints_dense(labels, ds, all_params):
-    """Correct labels with changepoints (dense array, legacy pipeline)."""
+    """Correct dense label arrays using changepoints (legacy ML pipeline).
+
+    Operates on integer label arrays, not interval DataFrames.
+    Use :func:`correct_changepoints` for the modern interval-native pipeline.
+
+    Parameters
+    ----------
+    labels : array-like
+        Dense integer label array of shape (T,).
+    ds : xr.Dataset
+        Trial dataset containing changepoint variables.
+    all_params : dict
+        Keys:
+
+        - ``cp_kwargs``: Selection kwargs forwarded to ``ds.sel()``.
+        - ``min_label_length_s``: Minimum label duration in seconds.
+        - ``stitch_gap_len_s``: Maximum gap to stitch in seconds.
+        - ``label_thresholds_s``: Per-label minimum durations (dict).
+        - ``changepoint_params``: Dict with ``max_expansion_s`` and
+          ``max_shrink_s``.
+        - ``fps``: Frame rate used to convert seconds to sample counts.
+
+    Returns
+    -------
+    np.ndarray
+        Corrected integer label array of the same shape as ``labels``.
+    """
     cp_kwargs = all_params["cp_kwargs"]
     
 
@@ -329,7 +355,30 @@ def correct_changepoints_dense(labels, ds, all_params):
 # ---------------------------------------------------------------------------
 
 def merge_changepoints(ds):
-    """Merge all changepoint variables into a single combined mask."""
+    """Merge all changepoint variables in a dataset into a single boolean mask.
+
+    Combines every variable with ``attrs["type"] == "changepoints"`` using
+    logical OR across all non-time dimensions.  All changepoint variables
+    must share the same ``target_feature`` attribute.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset containing one or more changepoint variables.
+
+    Returns
+    -------
+    ds : xr.Dataset
+        Copy of the input with a new ``"changepoints"`` DataArray
+        (float 0/1) replacing the individual changepoint variables.
+    target_feature : str
+        The shared ``target_feature`` attribute from the input variables.
+
+    Raises
+    ------
+    ValueError
+        If changepoint variables reference different target features.
+    """
     ds = ds.copy()
     cp_ds = ds.filter_by_attrs(type="changepoints")
 

@@ -34,13 +34,32 @@ theme:
     repo: fontawesome/brands/github
 
 plugins:
-  - search
   - mkdocstrings:
       handlers:
         python:
-          options:
-            show_source: true
+            options:
+              show_source: true
+              docstring_style: numpy        # or google — pick one and be consistent
+              docstring_section_style: table # renders params/returns as a table
+              show_root_heading: true
+              show_symbol_type_heading: true
+              show_signature_annotations: true
+              separate_signature: true       # puts the signature on its own line
+              merge_init_into_class: true
+              members_order: source
+              group_by_category: true        # groups methods, attributes, etc.
+              heading_level: 2
+            inventories:
+            - https://docs.xarray.dev/en/stable/objects.inv
+            - https://numpy.org/doc/stable/objects.inv
+            - https://pandas.pydata.org/pandas-docs/stable/objects.inv
+            - https://movement.neuroinformatics.dev/latest/objects.inv
+            - https://audian.readthedocs.io/en/latest/objects.inv
+            - https://www.riverbankcomputing.com/static/Docs/PyQt5/objects.inv
+            - https://pynapple-org.github.io/pynapple/objects.inv
+  - autorefs
 
+            
 markdown_extensions:
   - admonition
   - pymdownx.details
@@ -48,7 +67,9 @@ markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
-  - pymdownx.snippets
+  - pymdownx.snippets:
+      base_path:
+        - docs
   - pymdownx.tabbed:
       alternate_style: true
   - tables
@@ -69,10 +90,16 @@ nav:
   - Getting Started:
       - Installation: installation.md
       - Getting Started Wizard: wizard.md
-      - Loading data: data-loading.md
+      - Loading Data:
+          - Overview: data-loading.md
+          - From a pose file: loading-pose.md
+          - From an audio file: loading-audio.md
+          - From a numpy file: loading-numpy.md
+          - From an ephys recording: loading-ephys.md
+          - Multi-trial (script): loading-script.md
+          - Other / custom formats: loading-other.md
       - TrialTree: trialtree.md
       - Data requirements: data-requirements.md
-      - Ephys data: ephys-data.md
       - Dataset tutorials: tutorials.md
       - Export/Import of labels: export-labels.md
 
@@ -81,6 +108,21 @@ nav:
       - Labelling: labelling.md
       - Changepoints: changepoints.md
       - Plot Settings: plot-settings.md
+
+  - API Reference:
+      - Overview: api/index.md
+      - TrialTree: api/trialtree.md
+      - Label Intervals: api/label-intervals.md
+      - Data Utilities: api/xr-utils.md
+      - Features:
+          - Neural: api/features/neural.md
+          - Changepoints: api/features/changepoints.md
+          - Movement: api/features/movement.md
+          - Energy Envelopes: api/features/energy.md
+          - Preprocessing: api/features/preprocessing.md
+          - Audio Changepoints: api/features/audio-changepoints.md
+          - Oscillatory Events: api/features/oscillatory.md
+      - Validation: api/validation.md
 
   - Help:
       - Troubleshooting: troubleshooting.md

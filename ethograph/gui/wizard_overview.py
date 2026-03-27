@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -411,6 +412,7 @@ class NCWizardDialog(QDialog):
             progress = BusyProgressDialog("Scanning files…", parent=self)
             _, err = progress.execute(self._page_timeline.populate_from_state, self._state)
             if err:
+                print(f"[ERROR] Failed to scan files: {err}", flush=True)
                 QMessageBox.critical(self, "Error", f"Failed to scan files:\n{err}")
                 return
             self._stack.setCurrentIndex(4)
@@ -520,12 +522,14 @@ class NCWizardDialog(QDialog):
 
         if progress.was_cancelled or error:
             if error:
+                print(f"[ERROR] Failed to build TrialTree: {error}", flush=True)
                 QMessageBox.critical(self, "Error", f"Failed to ➕Create with own data:\n{error}")
             return
 
         save_progress = BusyProgressDialog("Saving .nc file…", parent=self)
         _, save_error = save_progress.execute(dt.to_netcdf, output_path)
         if save_error:
+            print(f"[ERROR] Failed to save: {save_error}", flush=True)
             QMessageBox.critical(self, "Error", f"Failed to save:\n{save_error}")
             return
 

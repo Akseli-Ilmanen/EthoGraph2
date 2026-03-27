@@ -70,7 +70,37 @@ def get_audio_changepoints(
     channel_idx: int = 0,
     **kwargs,
 ) -> tuple:
+    """Detect vocal onset/offset times from audio using the specified algorithm.
 
+    Supports four backends: ``meansquared`` and ``ava`` (vocalpy), plus
+    ``vocalseg`` and ``continuity`` (vocalseg library dynamic/continuity
+    threshold segmentation).
+
+    Parameters
+    ----------
+    method : str
+        Segmentation algorithm. One of ``"meansquared"``, ``"ava"``,
+        ``"vocalseg"``, ``"continuity"``.
+    audio_path : str, optional
+        Path to an audio file (any format supported by audioio).
+    signal : np.ndarray, optional
+        Raw 1-D audio array. Required when ``audio_path`` is None.
+    sr : float, optional
+        Sample rate in Hz. Required when ``signal`` is provided.
+    channel_idx : int
+        Which channel to use for multi-channel audio files.
+    **kwargs
+        Passed to the chosen backend (e.g. ``nperseg``, ``min_freq``).
+
+    Returns
+    -------
+    (onsets, offsets) : tuple[np.ndarray, np.ndarray]
+        Event onset and offset times in seconds.
+    env_time : np.ndarray
+        Time axis for the energy envelope in seconds.
+    envelope : np.ndarray
+        Energy amplitude envelope aligned with ``env_time``.
+    """
     data_1d, sr = _prepare_audio(audio_path, signal, sr, channel_idx)
     sound = _to_sound(data_1d, sr)
 

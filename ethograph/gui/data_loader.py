@@ -108,17 +108,13 @@ def wizard_single_from_pose(
     """
     try:
         ds = load.load_dataset(
-            file_path=pose_path,
+            pose_path,
             fps=fps,
             source_software=source_software,
         )
     except (OSError, ValueError, KeyError):
-        # Fallback: try reading as HDF5 DLC-style DataFrame
-        df = pd.read_hdf(pose_path)
-        pose_path = Path(pose_path).with_suffix(".csv")
-        ds = load_poses.from_dlc_style_df(df, fps=fps)
-        save_poses.to_dlc_file(ds, str(pose_path))
-        ds.attrs["source_software"] = source_software
+        _show_popup(f"Failed to load pose data from {pose_path}. Please check the file and try again.", title="Pose Load Error")
+        raise
 
 
     ds["velocity"] = compute_velocity(ds.position)

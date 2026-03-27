@@ -92,6 +92,38 @@ def _dataset_to_ep(ds: xr.Dataset) -> nap.IntervalSet:
 
 
 class TrialTree(xr.DataTree):
+    """Hierarchical container for multi-trial behavioral datasets.
+
+    Inherits from ``xr.DataTree``. Each trial is a child node holding an
+    ``xr.Dataset`` with the trial identifier stored in ``ds.attrs["trial"]``.
+    An optional ``"session"`` child node stores session-level metadata
+    (file paths, timing, stream offsets).
+
+    Construction
+    ------------
+    Load from a saved file or build from a list of datasets::
+
+        import ethograph as eto
+
+        dt = eto.open("data.nc")                          # load
+        dt = eto.from_datasets([ds1, ds2, ds3])           # build
+
+    Data access
+    -----------
+    ::
+
+        ds = dt.trial("trial_01")   # by trial ID
+        ds = dt.itrial(0)            # by integer index
+
+        for trial_id, ds in dt.trial_items():
+            ...
+
+    Labels
+    ------
+    Labels are stored as interval-format datasets (onset_s / offset_s /
+    labels / individual).  Retrieve the label sub-tree via
+    :meth:`get_label_dt` and persist changes via :meth:`overwrite_with_labels`.
+    """
 
     def __init__(self, data=None, children=None, name=None):
         if isinstance(data, xr.DataTree):
@@ -155,6 +187,14 @@ class TrialTree(xr.DataTree):
         return trials
 
     def trial_items(self):
+        """Iterate over ``(trial_id, dataset)`` pairs for all trial nodes.
+
+        Yields
+        ------
+        trial_id : int or str
+            The ``ds.attrs["trial"]`` value.
+        ds : xr.Dataset
+        """
         for node in self.children.values():
             if node.ds is not None and "trial" in node.ds.attrs:
                 trial_id = node.ds.attrs["trial"]
@@ -193,6 +233,13 @@ class TrialTree(xr.DataTree):
         self[SESSION_NODE] = xr.DataTree(func(self[SESSION_NODE].to_dataset()))
 
     def set_session_table(self, table: xr.Dataset | pd.DataFrame) -> None:
+        """Store session-level metadata (timing, file paths, etc.).
+
+        Parameters
+        ----------
+        table : xr.Dataset or pd.DataFrame
+            Must be indexed (or have a column) named ``"trial"``.
+        """
         if isinstance(table, pd.DataFrame):
             if table.index.name != "trial":
                 if "trial" in table.columns:
@@ -510,12 +557,34 @@ class TrialTree(xr.DataTree):
     # ------------------------------------------------------------------
 
     def trial(self, trial) -> xr.Dataset:
+        """Return the dataset for the given trial ID.
+
+        Parameters
+        ----------
+        trial : int or str
+            Matches ``ds.attrs["trial"]``.
+
+        Returns
+        -------
+        xr.Dataset
+        """
         ds = self[self._trial_node_name(trial)].ds
         if ds is None:
             raise ValueError(f"Trial {trial} has no dataset")
         return ds
 
     def itrial(self, trial_idx: int) -> xr.Dataset:
+        """Return the dataset at an integer index (0-based).
+
+        Parameters
+        ----------
+        trial_idx : int
+            Zero-based index into the ordered list of trial nodes.
+
+        Returns
+        -------
+        xr.Dataset
+        """
         trial_nodes = [
             k
             for k in self.children
@@ -549,6 +618,24 @@ class TrialTree(xr.DataTree):
     # ------------------------------------------------------------------
 
     def get_label_dt(self, empty: bool = False, empty_confidence: bool = False) -> TrialTree:
+        """Return a TrialTree containing only label interval data.
+
+        Strips all feature variables, keeping only onset_s / offset_s /
+        labels / individual.  Dense legacy label arrays are auto-converted
+        to interval format on the fly.
+
+        Parameters
+        ----------
+        empty : bool
+            If True, return an empty interval dataset for every trial.
+        empty_confidence : bool
+            If True and no ``labels_confidence`` column exists, inject a
+            column of ones.
+
+        Returns
+        -------
+        TrialTree
+        """
         def filter_node(ds):
             if ds is None:
                 return xr.Dataset()
@@ -592,6 +679,21 @@ class TrialTree(xr.DataTree):
         return TrialTree(tree)
 
     def overwrite_with_labels(self, labels_tree: xr.DataTree) -> TrialTree:
+        """Merge label variables from *labels_tree* into this TrialTree.
+
+        Replaces any existing label variables (onset_s, offset_s, labels,
+        individual) in each trial's dataset with those from *labels_tree*.
+
+        Parameters
+        ----------
+        labels_tree : xr.DataTree
+            A label-only tree (typically from :meth:`get_label_dt`).
+
+        Returns
+        -------
+        TrialTree
+            New tree with updated labels merged in.
+        """
         def merge_func(data_ds, labels_ds):
             if labels_ds is not None and data_ds is not None:
                 tree = data_ds.copy()
@@ -613,6 +715,19 @@ class TrialTree(xr.DataTree):
     # ------------------------------------------------------------------
 
     def filter_by_attr(self, attr_name: str, attr_value: Any) -> TrialTree:
+        """Return a new TrialTree containing only trials that match an attribute.
+
+        Parameters
+        ----------
+        attr_name : str
+            ``ds.attrs`` key to filter on.
+        attr_value
+            Target value. Compared after coercion to str / int / float.
+
+        Returns
+        -------
+        TrialTree
+        """
         new_tree = xr.DataTree()
 
         def values_match(stored: Any, target: Any) -> bool:
@@ -637,6 +752,17 @@ class TrialTree(xr.DataTree):
 
     @classmethod
     def open(cls, path: str) -> TrialTree:
+        """Load a TrialTree from a NetCDF file.
+
+        Parameters
+        ----------
+        path : str
+            Path to a ``.nc`` file previously saved with :meth:`save`.
+
+        Returns
+        -------
+        TrialTree
+        """
         tree = xr.open_datatree(path, engine="netcdf4")
         tree.__class__ = cls
         tree._source_path = path
@@ -649,6 +775,22 @@ class TrialTree(xr.DataTree):
         session_table: xr.Dataset | pd.DataFrame | None = None,
         validate: bool = True,
     ) -> TrialTree:
+        """Build a TrialTree from a list of xarray Datasets.
+
+        Parameters
+        ----------
+        datasets : list[xr.Dataset]
+            Each dataset must have a unique ``attrs["trial"]`` key.
+        session_table : xr.Dataset or pd.DataFrame, optional
+            Session-level metadata indexed by trial ID.
+        validate : bool
+            Run :func:`~ethograph.utils.validation.validate_datatree`
+            after construction. Default True.
+
+        Returns
+        -------
+        TrialTree
+        """
         tree = cls()
         seen: set = set()
         for ds in datasets:
@@ -677,6 +819,16 @@ class TrialTree(xr.DataTree):
         return tree
 
     def save(self, path: str | Path | None = None) -> None:
+        """Write the TrialTree to a NetCDF file.
+
+        Uses an atomic write (temp file then rename) to avoid partial writes.
+
+        Parameters
+        ----------
+        path : str or Path, optional
+            Destination path.  If None, overwrites the file the tree was
+            loaded from.
+        """
         source_path = getattr(self, "_source_path", None)
         if path is None and source_path is None:
             raise ValueError("No path provided and no source path stored.")
