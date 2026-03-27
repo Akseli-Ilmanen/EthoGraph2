@@ -68,6 +68,7 @@ nav:
   - Home: index.md
   - Getting Started:
       - Installation: installation.md
+      - Getting Started Wizard: wizard.md
       - Loading data: data-loading.md
       - TrialTree: trialtree.md
       - Data requirements: data-requirements.md

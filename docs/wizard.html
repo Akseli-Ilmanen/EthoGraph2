@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EthoGraph — Getting Started Wizard</title>
+<style>
+  :root {
+    --primary: #00897b;
+    --primary-dark: #00695c;
+    --bg: #ffffff;
+    --surface: #f5f5f5;
+    --border: #e0e0e0;
+    --text: #212121;
+    --muted: #757575;
+    --success: #2e7d32;
+    --info: #1565c0;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #fafafa; color: var(--text);
+    display: flex; justify-content: center; padding: 2rem 1rem; min-height: 100vh;
+  }
+  .page-wrapper { width: 100%; max-width: 720px; }
+  h1 { font-size: 1.8rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 0.4rem; }
+  .subtitle { color: var(--muted); font-size: 1rem; margin-bottom: 2rem; }
+
+  /* Card */
+  .card {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 2rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+
+  /* Progress */
+  .progress { display: flex; align-items: center; margin-bottom: 2rem; }
+  .bubble {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 2px solid var(--border); background: var(--bg);
+    color: var(--muted); font-size: .8rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: all .2s;
+  }
+  .bubble.active { border-color: var(--primary); background: var(--primary); color: #fff; }
+  .bubble.done   { border-color: var(--primary); background: var(--primary); color: #fff; }
+  .connector { flex: 1; height: 2px; background: var(--border); transition: background .2s; }
+  .connector.done { background: var(--primary); }
+
+  /* Pages */
+  .wpage { display: none; }
+  .wpage.on { display: block; }
+
+  /* Questions */
+  .q-title { font-size: 1.1rem; font-weight: 600; margin-bottom: .4rem; }
+  .q-hint  { font-size: .88rem; color: var(--muted); margin-bottom: 1.2rem; line-height: 1.5; }
+
+  /* Choice items — fix: no onclick on label, use onchange on input */
+  .choices { display: flex; flex-direction: column; gap: .55rem; }
+  .choice {
+    display: flex; align-items: flex-start; gap: .75rem;
+    padding: .7rem 1rem;
+    border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+    transition: border-color .15s, background .15s; user-select: none;
+  }
+  .choice:hover { border-color: var(--primary); background: rgba(0,137,123,.06); }
+  .choice.sel   { border-color: var(--primary); background: rgba(0,137,123,.06); }
+  .choice input { margin-top: 2px; accent-color: var(--primary); width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
+  .clabel strong { display: block; font-size: .95rem; font-weight: 600; }
+  .clabel span   { font-size: .83rem; color: var(--muted); }
+
+  /* Sub-questions */
+  .subq {
+    display: none;
+    margin-top: 1.1rem; margin-left: 1rem;
+    padding: 1rem 1.25rem;
+    background: #f0f9f8; border: 1px solid #b2dfdb; border-radius: 6px;
+  }
+  .subq.on { display: block; }
+  .subq .q-title { font-size: .95rem; margin-bottom: .3rem; }
+  .subq .q-hint  { margin-bottom: .9rem; }
+  .subq .choices { gap: .45rem; }
+  .subq .choice  { padding: .55rem .85rem; }
+
+  /* Nav */
+  .nav {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--border);
+  }
+  .btn {
+    padding: .55rem 1.4rem; border-radius: 6px; border: none;
+    font-size: .9rem; font-weight: 600; cursor: pointer;
+    transition: background .15s; font-family: inherit;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost { background: transparent; color: var(--muted); font-size: .85rem; font-weight: 400; padding: .5rem; cursor: pointer; border: none; text-decoration: underline; font-family: inherit; }
+
+  /* Validation */
+  .valmsg { color: #c62828; font-size: .84rem; margin-top: .7rem; display: none; }
+  .valmsg.on { display: block; }
+
+  /* Results */
+  .rsec { border-radius: 6px; padding: 1.25rem 1.5rem; margin-bottom: 1.1rem; }
+  .rsec.intro { background: #e8f5e9; border-left: 4px solid var(--success); }
+  .rsec.intro h3 { color: var(--success); font-size: 1.05rem; margin: 0 0 .4rem; }
+  .rsec.steps { background: var(--surface); border: 1px solid var(--border); }
+  .rsec.steps h4 { font-size: .95rem; font-weight: 700; margin: 0 0 .7rem; }
+  .rsec.steps ol { margin-left: 1.2rem; line-height: 1.9; font-size: .93rem; }
+  .rsec.links { background: #e3f2fd; border-left: 4px solid var(--info); }
+  .rsec.links h4 { color: var(--info); font-size: .95rem; font-weight: 700; margin: 0 0 .55rem; }
+  .rsec.links ul { list-style: none; padding: 0; margin: 0; }
+  .rsec.links li { font-size: .88rem; margin-bottom: .25rem; }
+  .rsec.links a { color: var(--info); text-decoration: none; font-weight: 500; }
+  .rsec.links a:hover { text-decoration: underline; }
+
+  .badge {
+    display: inline-block; padding: .15rem .5rem; border-radius: 20px;
+    font-size: .72rem; font-weight: 700; margin-right: .3rem; vertical-align: middle;
+  }
+  .bg { background: #c8e6c9; color: var(--success); }
+  .bb { background: #bbdefb; color: var(--info); }
+  .ba { background: #fff8e1; color: #f57f17; border: 1px solid #ffe082; }
+  .tags { margin-bottom: .7rem; }
+
+  code { background: #efefef; padding: .1em .35em; border-radius: 3px; font-size: .84em; font-family: monospace; }
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+
+  <h1>Getting Started Wizard</h1>
+  <p class="subtitle">Answer a few questions to get personalised setup instructions.</p>
+
+  <div class="card">
+
+    <!-- Progress bar -->
+    <div class="progress">
+      <div class="bubble active" id="b0">1</div>
+      <div class="connector" id="c0"></div>
+      <div class="bubble" id="b1">2</div>
+      <div class="connector" id="c1"></div>
+      <div class="bubble" id="b2">3</div>
+      <div class="connector" id="c2"></div>
+      <div class="bubble" id="b3">✓</div>
+    </div>
+
+    <!-- ── Page 0: NWB ── -->
+    <div class="wpage on" id="p0">
+      <div class="q-title">Are you working with NWB files?</div>
+      <div class="q-hint">NWB (<code>.nwb</code>) files are self-contained — EthoGraph loads them directly without any extra setup.</div>
+      <div class="choices">
+        <label class="choice" id="lnwb_yes">
+          <input type="radio" name="nwb" value="yes" onchange="onRadio(this,'nwb')">
+          <div class="clabel"><strong>Yes — I have .nwb files</strong><span>From DANDI, NeuroConv, or another NWB pipeline</span></div>
+        </label>
+        <label class="choice" id="lnwb_no">
+          <input type="radio" name="nwb" value="no" onchange="onRadio(this,'nwb')">
+          <div class="clabel"><strong>No — I have raw files (video, audio, pose, ephys, …)</strong></div>
+        </label>
+      </div>
+      <div class="valmsg" id="v0">Please select an option to continue.</div>
+    </div>
+
+    <!-- ── Page 1: Data types + sub-questions ── -->
+    <div class="wpage" id="p1">
+      <div class="q-title">What do you want to visualise in EthoGraph?</div>
+      <div class="q-hint">Select everything that applies.</div>
+      <div class="choices">
+        <label class="choice" id="ldt_video">
+          <input type="checkbox" name="dtype" value="video" onchange="onCheck(this,'video')">
+          <div class="clabel"><strong>Videos</strong><span>.mp4 camera recordings</span></div>
+        </label>
+        <label class="choice" id="ldt_pose">
+          <input type="checkbox" name="dtype" value="pose" onchange="onCheck(this,'pose')">
+          <div class="clabel"><strong>Pose estimation</strong><span>DeepLabCut, SLEAP, LightningPose — .h5 or .csv files</span></div>
+        </label>
+        <label class="choice" id="ldt_audio">
+          <input type="checkbox" name="dtype" value="audio" onchange="onCheck(this,'audio')">
+          <div class="clabel"><strong>Audio / Spectrogram</strong><span>.wav, .mp3, or .mp4 files with sound</span></div>
+        </label>
+        <label class="choice" id="ldt_ephys">
+          <input type="checkbox" name="dtype" value="ephys" onchange="onCheck(this,'ephys')">
+          <div class="clabel"><strong>Electrophysiology</strong><span>Raw ephys (.rhd, .abf, .oebin, …) or spike-sorted units (Kilosort)</span></div>
+        </label>
+        <label class="choice" id="ldt_numpy">
+          <input type="checkbox" name="dtype" value="numpy" onchange="onCheck(this,'numpy')">
+          <div class="clabel"><strong>Custom feature array</strong><span>Pre-computed signals stored as .npy</span></div>
+        </label>
+      </div>
+
+      <!-- Sub-question: cameras (shown when video or pose selected) -->
+      <div class="subq" id="subCameras">
+        <div class="q-title">Did you record from multiple cameras?</div>
+        <div class="q-hint">i.e. do you have multiple video files or multiple pose files.</div>
+        <div class="choices">
+          <label class="choice" id="lcam_single">
+            <input type="radio" name="cameras" value="single" onchange="onRadio(this,'cameras')">
+            <div class="clabel"><strong>No — single camera</strong><span>One video file and/or one pose file</span></div>
+          </label>
+          <label class="choice" id="lcam_multi">
+            <input type="radio" name="cameras" value="multi" onchange="onRadio(this,'cameras')">
+            <div class="clabel"><strong>Yes — multiple cameras</strong><span>Multiple video or pose files</span></div>
+          </label>
+        </div>
+        <div class="valmsg" id="vcam">Please answer this question.</div>
+      </div>
+
+      <!-- Sub-question: audio setup (shown when audio selected) -->
+      <div class="subq" id="subAudio">
+        <div class="q-title">How are your audio files organised?</div>
+        <div class="choices">
+          <label class="choice" id="laud_single">
+            <input type="radio" name="audio_setup" value="single" onchange="onRadio(this,'audio_setup')">
+            <div class="clabel"><strong>Single microphone</strong><span>One .wav (or .mp3) file</span></div>
+          </label>
+          <label class="choice" id="laud_multichan">
+            <input type="radio" name="audio_setup" value="multichannel" onchange="onRadio(this,'audio_setup')">
+            <div class="clabel"><strong>Multiple microphones in one multichannel file</strong><span>All mics stored in a single .wav file with multiple channels</span></div>
+          </label>
+          <label class="choice" id="laud_multifile">
+            <input type="radio" name="audio_setup" value="multi_files" onchange="onRadio(this,'audio_setup')">
+            <div class="clabel"><strong>Multiple .wav files</strong><span>One separate file per microphone</span></div>
+          </label>
+        </div>
+        <div class="valmsg" id="vaud">Please answer this question.</div>
+      </div>
+
+      <div class="valmsg" id="v1">Please select at least one data type.</div>
+    </div>
+
+    <!-- ── Page 2: Trials ── -->
+    <div class="wpage" id="p2">
+      <div class="q-title">Does your data have a trial structure?</div>
+      <div class="q-hint">Choose <strong>Yes</strong> if either: (a) you have multiple separate files per stream (e.g. 20 video clips, one per trial), or (b) you have one continuous recording but want to define discrete trial windows within it (e.g. "trial 1 starts at t=45 s, trial 2 at t=2:30 min").</div>
+      <div class="choices">
+        <label class="choice" id="ltr_no">
+          <input type="radio" name="trials" value="no" onchange="onRadio(this,'trials')">
+          <div class="clabel"><strong>No — treat the whole recording as one session</strong><span>One continuous video, audio, and/or ephys file with no defined trial boundaries</span></div>
+        </label>
+        <label class="choice" id="ltr_yes">
+          <input type="radio" name="trials" value="yes" onchange="onRadio(this,'trials')">
+          <div class="clabel"><strong>Yes — I have trials or epochs</strong><span>Multiple files per stream, or one continuous file with defined trial start/stop times</span></div>
+        </label>
+      </div>
+      <div class="valmsg" id="v2">Please select an option to continue.</div>
+    </div>
+
+    <!-- ── Result ── -->
+    <div class="wpage" id="pResult">
+      <div id="resultHtml"></div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav">
+      <button class="btn btn-secondary" id="btnPrev" onclick="prev()" style="display:none">← Back</button>
+      <div style="display:flex;gap:1rem;align-items:center;">
+        <button class="btn btn-ghost" id="btnRestart" onclick="restart()" style="display:none">Start over</button>
+        <button class="btn btn-primary" id="btnNext" onclick="next()">Next →</button>
+      </div>
+    </div>
+
+  </div><!-- /card -->
+</div><!-- /page-wrapper -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+const ws = { nwb: null, dtypes: new Set(), cameras: null, audio_setup: null, trials: null };
+let cur = 0;
+
+// ── Input handlers (onchange on inputs — avoids double-toggle bug) ──
+function onRadio(inp, key) {
+  document.querySelectorAll('input[name="' + inp.name + '"]').forEach(function(o) {
+    o.closest('.choice').classList.remove('sel');
+  });
+  inp.closest('.choice').classList.add('sel');
+  ws[key] = inp.value;
+  clearVal();
+}
+
+function onCheck(inp, value) {
+  inp.closest('.choice').classList.toggle('sel', inp.checked);
+  if (inp.checked) ws.dtypes.add(value); else ws.dtypes.delete(value);
+  updateSubQuestions();
+  clearVal();
+}
+
+function updateSubQuestions() {
+  var needCam = ws.dtypes.has('video') || ws.dtypes.has('pose');
+  var needAud = ws.dtypes.has('audio');
+  document.getElementById('subCameras').classList.toggle('on', needCam);
+  document.getElementById('subAudio').classList.toggle('on', needAud);
+  if (!needCam) { ws.cameras = null; clearRadioGroup('cameras'); }
+  if (!needAud) { ws.audio_setup = null; clearRadioGroup('audio_setup'); }
+}
+
+function clearRadioGroup(name) {
+  document.querySelectorAll('input[name="' + name + '"]').forEach(function(inp) {
+    inp.checked = false;
+    inp.closest('.choice').classList.remove('sel');
+  });
+}
+
+function clearVal() {
+  document.querySelectorAll('.valmsg').forEach(function(el) { el.classList.remove('on'); });
+}
+
+// ── Progress ────────────────────────────────────────────────────
+function setProgress(pageIdx) {
+  var max = 4;
+  for (var i = 0; i < max; i++) {
+    var b = document.getElementById('b' + i);
+    if (!b) continue;
+    b.classList.remove('active', 'done');
+    if (i < pageIdx) b.classList.add('done');
+    else if (i === pageIdx) b.classList.add('active');
+  }
+  for (var j = 0; j < 3; j++) {
+    var c = document.getElementById('c' + j);
+    if (c) c.classList.toggle('done', j < pageIdx);
+  }
+}
+
+// ── Page show ───────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.wpage').forEach(function(p) { p.classList.remove('on'); });
+  document.getElementById(id).classList.add('on');
+}
+
+// ── Validation ───────────────────────────────────────────────────
+function validatePage1() {
+  var ok = true;
+  if (ws.dtypes.size === 0) { document.getElementById('v1').classList.add('on'); ok = false; }
+  if (ws.dtypes.has('video') && ws.dtypes.has('pose') && !ws.cameras) {
+    document.getElementById('vcam').classList.add('on'); ok = false;
+  }
+  if (ws.dtypes.has('audio') && !ws.audio_setup) {
+    document.getElementById('vaud').classList.add('on'); ok = false;
+  }
+  return ok;
+}
+
+// ── Navigation ───────────────────────────────────────────────────
+function next() {
+  clearVal();
+  if (cur === 0) {
+    if (!ws.nwb) { document.getElementById('v0').classList.add('on'); return; }
+    if (ws.nwb === 'yes') { showResult(); return; }
+    cur = 1; showPage('p1'); setProgress(1);
+    document.getElementById('btnPrev').style.display = '';
+    document.getElementById('btnNext').textContent = 'Next →';
+    return;
+  }
+  if (cur === 1) {
+    if (!validatePage1()) return;
+    cur = 2; showPage('p2'); setProgress(2);
+    document.getElementById('btnNext').textContent = 'See my setup →';
+    return;
+  }
+  if (cur === 2) {
+    if (!ws.trials) { document.getElementById('v2').classList.add('on'); return; }
+    showResult();
+  }
+}
+
+function prev() {
+  clearVal();
+  if (cur === 1) {
+    cur = 0; showPage('p0'); setProgress(0);
+    document.getElementById('btnPrev').style.display = 'none';
+    document.getElementById('btnNext').textContent = 'Next →';
+  } else if (cur === 2) {
+    cur = 1; showPage('p1'); setProgress(1);
+    document.getElementById('btnNext').textContent = 'Next →';
+  } else if (cur === 'r') {
+    var back = ws.nwb === 'yes' ? 0 : 2;
+    cur = back; showPage('p' + back); setProgress(back);
+    document.getElementById('btnNext').style.display = '';
+    document.getElementById('btnNext').textContent = back === 2 ? 'See my setup →' : 'Next →';
+    document.getElementById('btnPrev').style.display = back > 0 ? '' : 'none';
+    document.getElementById('btnRestart').style.display = 'none';
+  }
+}
+
+function restart() {
+  ws.nwb = null; ws.dtypes.clear(); ws.cameras = null; ws.audio_setup = null; ws.trials = null;
+  document.querySelectorAll('input[type=radio],input[type=checkbox]').forEach(function(inp) { inp.checked = false; });
+  document.querySelectorAll('.choice').forEach(function(el) { el.classList.remove('sel'); });
+  document.querySelectorAll('.subq').forEach(function(el) { el.classList.remove('on'); });
+  cur = 0; showPage('p0'); setProgress(0);
+  document.getElementById('btnPrev').style.display = 'none';
+  document.getElementById('btnNext').style.display = '';
+  document.getElementById('btnNext').textContent = 'Next →';
+  document.getElementById('btnRestart').style.display = 'none';
+  clearVal();
+}
+
+function showResult() {
+  cur = 'r'; showPage('pResult'); setProgress(3);
+  document.getElementById('btnPrev').style.display = '';
+  document.getElementById('btnNext').style.display = 'none';
+  document.getElementById('btnRestart').style.display = '';
+  document.getElementById('resultHtml').innerHTML = buildResult();
+}
+
+// ── Result logic ─────────────────────────────────────────────────
+function buildResult() {
+  if (ws.nwb === 'yes') return rNWB();
+  var d = ws.dtypes;
+  var needsScript = ws.trials === 'yes' || ws.cameras === 'multi' || ws.audio_setup === 'multi_files';
+
+  if (d.has('ephys') && ws.trials === 'yes') return rEphysMultiTrial();
+  if (d.has('ephys'))                         return rEphysSingle();
+  if (needsScript)                            return rNeedsScript();
+  if (d.size === 1 && d.has('audio'))         return rAudioOnly();
+  if (d.size === 1 && d.has('numpy'))         return rNumpy();
+  return rSimple();
+}
+
+// ── Badge helpers ─────────────────────────────────────────────────
+function tagBadges() {
+  var d = ws.dtypes, t = '';
+  if (d.has('video')) t += '<span class="badge bg">Video</span>';
+  if (d.has('pose'))  t += '<span class="badge bb">Pose</span>';
+  if (d.has('audio')) t += '<span class="badge ba">Audio</span>';
+  if (d.has('ephys')) t += '<span class="badge bb">Ephys</span>';
+  if (d.has('numpy')) t += '<span class="badge bb">Numpy</span>';
+  return '<div class="tags">' + t + '</div>';
+}
+
+// ── Result templates ──────────────────────────────────────────────
+var LAUNCH = '<li><a target="_blank" rel="noopener" href="installation.html">Install EthoGraph</a> if you haven\'t already</li>'
+           + '<li>Launch EthoGraph — double-click the desktop shortcut, or run:'
+           + '<br><code>conda activate ethograph &amp;&amp; ethograph launch</code></li>';
+
+function rNWB() {
+  return sec('intro', '<h3>NWB — no extra setup needed</h3>'
+    + '<p>EthoGraph reads <code>.nwb</code> files directly. Pose, video metadata, and trial structure are already bundled.</p>')
+  + sec('steps', '<h4>Steps</h4><ol>'
+    + LAUNCH
+    + '<li>In the <strong>I/O widget</strong>, click the file browser next to <em>Session data</em></li>'
+    + '<li>Select your <code>.nwb</code> file</li>'
+    + '<li><em>Optional:</em> select a local video folder if videos are not embedded</li>'
+    + '<li>Click <strong>Load</strong></li>'
+    + '</ol>')
+  + sec('links', '<h4>Relevant docs</h4><ul>'
+    + '<li><a target="_blank" rel="noopener" href="data-loading.html">Loading data</a></li>'
+    + '</ul>');
+}
+
+function rSimple() {
+  var d = ws.dtypes;
+  var hasPose = d.has('pose'), hasAudio = d.has('audio'), hasVideo = d.has('video');
+  var format = hasPose ? 'From a pose file' : hasAudio ? 'From an audio file' : 'From a numpy file';
+  var audioNote = '';
+  if (hasAudio) {
+    if (ws.audio_setup === 'multichannel') {
+      audioNote = '<li>For the <strong>Audio file</strong>, select your multichannel <code>.wav</code> — EthoGraph will read it as-is</li>';
+    } else if (ws.audio_setup === 'single' && (hasVideo || hasPose)) {
+      audioNote = '<li>In <em>Common fields</em>, also set the <strong>Audio file</strong></li>';
+    }
+  }
+  return sec('intro', '<h3>Single recording — use the Create dialog</h3>'
+    + tagBadges()
+    + '<p>The built-in <em>➕Create with own data</em> dialog handles this without any scripting.</p>')
+  + sec('steps', '<h4>Steps</h4><ol>'
+    + LAUNCH
+    + '<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li>'
+    + '<li>Select format: <strong>' + format + '</strong></li>'
+    + '<li>Fill in the file paths</li>'
+    + audioNote
+    + '<li>Click <strong>Create</strong> — fields are auto-populated, then click <strong>Load</strong></li>'
+    + '</ol>')
+  + sec('links', '<h4>Relevant docs</h4><ul>'
+    + '<li><a target="_blank" rel="noopener" href="data-loading.html#option-2-create-a-trialsncfrom-your-own-data">Loading data — Create dialog</a></li>'
+    + (hasPose  ? '<li><a target="_blank" rel="noopener" href="data-loading.html#1-from-a-pose-file">From a pose file</a></li>' : '')
+    + (!hasPose && hasAudio ? '<li><a target="_blank" rel="noopener" href="data-loading.html#3-from-an-audio-file">From an audio file</a></li>' : '')
+    + '<li><a target="_blank" rel="noopener" href="data-loading.html#try-the-gui-with-template-datasets">Try template datasets first</a></li>'
+    + '</ul>');
+}
+
+function rAudioOnly() {
+  var multichan = ws.audio_setup === 'multichannel';
+  return sec('intro', '<h3>Audio-only mode</h3>'
+    + '<div class="tags"><span class="badge ba">Audio</span></div>'
+    + '<p>EthoGraph supports datasets with no video. A time slider replaces the video player.'
+    + (multichan ? ' Your multichannel file will be loaded as-is.' : '') + '</p>')
+  + sec('steps', '<h4>Steps</h4><ol>'
+    + LAUNCH
+    + '<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li>'
+    + '<li>Select format: <strong>From an audio file</strong></li>'
+    + '<li>Select your <code>' + (multichan ? 'multichannel .wav' : '.wav / .mp3') + '</code> file</li>'
+    + '<li>Click <strong>Create</strong>, then <strong>Load</strong></li>'
+    + '</ol>')
+  + sec('links', '<h4>Relevant docs</h4><ul>'
+    + '<li><a target="_blank" rel="noopener" href="data-loading.html#3-from-an-audio-file">From an audio file</a></li>'
+    + '<li><a target="_blank" rel="noopener" href="data-requirements.html#audio-only-no-video">Data requirements — audio-only</a></li>'
+    + '</ul>');
+}
+
+function rNumpy() {
+  return sec('intro', '<h3>Custom numpy feature</h3>'
+    + '<div class="tags"><span class="badge bb">Numpy</span></div>'
+    + '<p>For pre-computed signals stored as <code>.npy</code>. Array shape: <code>(n_samples, n_variables)</code> or the transpose.</p>')
+  + sec('steps', '<h4>Steps</h4><ol>'
+    + LAUNCH
+    + '<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li>'
+    + '<li>Select format: <strong>From a numpy file</strong></li>'
+    + '<li>Set the <code>.npy</code> file and the <strong>sampling rate</strong></li>'
+    + '<li>Click <strong>Create</strong>, then <strong>Load</strong></li>'
+    + '</ol>')
+  + sec('links', '<h4>Relevant docs</h4><ul>'
+    + '<li><a target="_blank" rel="noopener" href="data-loading.html#4-from-a-numpy-file">From a numpy file</a></li>'
+    + '</ul>');
+}
+
+function rEphysSingle() {
+  return sec('intro', '<h3>Electrophysiology — single session</h3>'
+    + '<div class="tags"><span class="badge bb">Ephys</span></div>'
+    + '<p>Use the <em>➕Create with own data</em> dialog. Video and audio are optional add-ons.</p>')
+  + sec('steps', '<h4>Steps</h4><ol>'
+    + LAUNCH
+    + '<li>In the <strong>I/O widget</strong>, click <strong>➕Create with own data</strong></li>'
+    + '<li>Select format: <strong>From an ephys recording</strong></li>'
+    + '<li>Set your ephys file (<code>.rhd</code>, <code>.abf</code>, <code>.oebin</code>, …)</li>'
+    + '<li><em>Optional:</em> point to a Kilosort folder for spike-sorted units</li>'
+    + '<li>Click <strong>Create</strong>, then <strong>Load</strong></li>'
+    + '</ol>')
+  + sec('links', '<h4>Relevant docs</h4><ul>'
+    + '<li><a target="_blank" rel="noopener" href="data-loading.html#5-from-an-ephys-recording">From an ephys recording</a></li>'
+    + '<li><a target="_blank" rel="noopener" href="ephys-data.html">Ephys data — formats &amp; Kilosort</a></li>'
+    + '</ul>');
+}
+
+function rNeedsScript() {
+  var reason = '';
+  if (ws.cameras === 'multi') reason = 'You recorded from <strong>multiple cameras</strong>, each with its own video and pose file.';
+  else if (ws.audio_setup === 'multi_files') reason = 'You have <strong>multiple separate audio files</strong> (one per microphone).';
+  else reason = 'Your data spans <strong>multiple trials</strong>.';
+
+  var cameraNote = ws.cameras === 'multi'
+    ? '<li>Set video and pose files per camera: <code>dt.set_media("video", [[cam1.mp4, cam2.mp4]])</code></li>'
+      + '<li>Same pattern for pose: <code>dt.set_media("pose", [[cam1.h5, cam2.h5]])</code></li>'
+    : '';
+  var audioNote = ws.audio_setup === 'multi_files'
+    ? '<li>Set mic files: <code>dt.set_media("audio", [[mic1.wav, mic2.wav]])</code></li>'
+    : ws.audio_setup === 'multichannel'
+    ? '<li>Set audio: <code>dt.set_media("audio", [[recording.wav]])</code></li>'
+    : '';
+
+  return sec('intro', '<h3>Custom trials.nc — short Python script needed</h3>'
+    + tagBadges()
+    + '<p>' + reason + ' The built-in Create dialog only handles single files, so you\'ll write a short Python script to build the <code>trials.nc</code>.</p>')
+  + sec('steps', '<h4>Steps</h4><ol>'
+    + '<li><a target="_blank" rel="noopener" href="installation.html">Install EthoGraph</a> if you haven\'t already</li>'
+    + '<li>Read the full example in <a target="_blank" rel="noopener" href="data-requirements.html#full-example-multi-trial-dataset">Data requirements</a></li>'
+    + '<li>Create one <code>xr.Dataset</code> per trial, with features tagged <code>type="features"</code></li>'
+    + '<li>Call <code>eto.from_datasets(datasets)</code></li>'
+    + cameraNote
+    + audioNote
+    + '<li>Save: <code>dt.save("trials.nc")</code></li>'
+    + '<li>Launch EthoGraph and load the <code>.nc</code> file with your media folders</li>'
+    + '</ol>')
+  + sec('links', '<h4>Relevant docs</h4><ul>'
+    + '<li><a target="_blank" rel="noopener" href="data-requirements.html#full-example-multi-trial-dataset">Data requirements — full example</a></li>'
+    + '<li><a target="_blank" rel="noopener" href="trialtree.html">TrialTree reference</a></li>'
+    + '<li><a target="_blank" rel="noopener" href="tutorials.html">Tutorial notebooks</a></li>'
+    + '</ul>');
+}
+
+function rEphysMultiTrial() {
+  return sec('intro', '<h3>Ephys + multi-trial dataset</h3>'
+    + '<div class="tags"><span class="badge bb">Ephys</span><span class="badge bg">Multi-trial</span></div>'
+    + '<p>Ephys is a session-wide stream (one recording file covering all trials). You\'ll create a <code>trials.nc</code> for the behavioural structure and point EthoGraph to the ephys file separately in the GUI.</p>')
+  + sec('steps', '<h4>Steps</h4><ol>'
+    + '<li><a target="_blank" rel="noopener" href="installation.html">Install EthoGraph</a> if you haven\'t already</li>'
+    + '<li>Build your <code>trials.nc</code> using <code>eto.from_datasets()</code> (see the full example in Data requirements)</li>'
+    + '<li>If ephys and behaviour clocks differ: <code>dt.set_stream_offset("ephys", offset_s)</code></li>'
+    + '<li>Save: <code>dt.save("trials.nc")</code></li>'
+    + '<li>Launch EthoGraph, load the <code>.nc</code>, then separately select the ephys file / Kilosort folder</li>'
+    + '</ol>')
+  + sec('links', '<h4>Relevant docs</h4><ul>'
+    + '<li><a target="_blank" rel="noopener" href="ephys-data.html">Ephys data</a></li>'
+    + '<li><a target="_blank" rel="noopener" href="data-requirements.html#ephys-with-videoaudio-alignment">Data requirements — ephys alignment</a></li>'
+    + '<li><a target="_blank" rel="noopener" href="trialtree.html#stream-offsets">TrialTree — stream offsets</a></li>'
+    + '</ul>');
+}
+
+function sec(cls, html) {
+  return '<div class="rsec ' + cls + '">' + html + '</div>';
+}
+</script>
+</body>
+</html>

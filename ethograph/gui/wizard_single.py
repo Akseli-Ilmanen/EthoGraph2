@@ -223,7 +223,7 @@ class PoseFileDialog(QDialog):
             )
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to create trials.nc file:\n{e}")
+            QMessageBox.critical(self, "Error", f"Failed to ➕Create with own data file:\n{e}")
 
     def _populate_io_fields(self, output_path: str, video_path: Optional[str], pose_path: str):
         pose_folder = str(Path(pose_path).parent)
@@ -391,7 +391,7 @@ class XarrayDatasetDialog(QDialog):
             )
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to create trials.nc file:\n{e}")
+            QMessageBox.critical(self, "Error", f"Failed to ➕Create with own data file:\n{e}")
 
     def _populate_io_fields(self, output_path: str, video_path: Optional[str]):
 
@@ -593,7 +593,7 @@ class AudioFileDialog(QDialog):
             self.accept()
         except Exception as e:
             print(f"Error creating trials.nc file: {e}")
-            QMessageBox.critical(self, "Error", f"Failed to create trials.nc file:\n{e}")
+            QMessageBox.critical(self, "Error", f"Failed to ➕Create with own data file:\n{e}")
 
     def _populate_io_fields(self, output_path: str, video_path: Optional[str], audio_path: str):
         audio_folder = str(Path(audio_path).parent)
@@ -794,7 +794,7 @@ class NpyFileDialog(QDialog):
             self.accept()
         except Exception as e:
             print(f"Error creating trials.nc file: {e}")
-            QMessageBox.critical(self, "Error", f"Failed to create trials.nc file:\n{e}")
+            QMessageBox.critical(self, "Error", f"Failed to ➕Create with own data file:\n{e}")
 
     def _populate_io_fields(self, output_path: str, video_path: Optional[str]):
 
@@ -1125,7 +1125,7 @@ class EphysFileDialog(QDialog):
             self.accept()
         except Exception as e:
             print(f"Error creating trials.nc file: {e}")
-            QMessageBox.critical(self, "Error", f"Failed to create trials.nc file:\n{e}")
+            QMessageBox.critical(self, "Error", f"Failed to ➕Create with own data file:\n{e}")
 
     def _populate_io_fields(
         self, output_path: str, video_path: Optional[str],

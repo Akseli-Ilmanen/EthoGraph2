@@ -32,6 +32,7 @@ from ethograph.gui.dialog_function_params import _do_open_source
 from ethograph.gui.plots_timeseriessource import compute_trial_alignment, TimeRange, TrialAlignment
 from ethograph.gui.wizard_media_files import extract_file_row
 from ethograph.gui.wizard_overview import ModalityConfig, WizardState
+from ethograph.utils.stream_durations import get_audio_duration, get_ephys_duration, get_pose_duration, get_video_duration
 from ethograph.utils.xr_utils import get_time_coord
 
 # Colors per modality (matching dialog_media_files.py palette)
@@ -155,7 +156,7 @@ def _code_to_notebook(code: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Duration calculation helpers
+# Drawing helpers
 # ---------------------------------------------------------------------------
 
 def _make_rounded_bar(
@@ -169,41 +170,6 @@ def _make_rounded_bar(
     item.setBrush(brush)
     item.setPen(pen)
     return item
-
-
-def _get_video_duration(path: str) -> float | None:
-    try:
-        import av
-        with av.open(path) as container:
-            stream = container.streams.video[0]
-            if stream.duration and stream.time_base:
-                return float(stream.duration * stream.time_base)
-            if stream.frames and stream.average_rate:
-                return stream.frames / float(stream.average_rate)
-    except Exception:
-        pass
-    return None
-
-
-def _get_audio_duration(path: str) -> float | None:
-    try:
-        import soundfile as sf
-        info = sf.info(path)
-        return info.duration
-    except Exception:
-        pass
-    try:
-        import av
-        with av.open(path) as container:
-            stream = container.streams.audio[0]
-            if stream.duration and stream.time_base:
-                return float(stream.duration * stream.time_base)
-    except Exception:
-        pass
-    return None
-
-
-
 
 
 def _compute_file_durations(state: WizardState) -> dict[str, dict[str, float]]:
@@ -226,13 +192,13 @@ def _compute_file_durations(state: WizardState) -> dict[str, dict[str, float]]:
             fp = str(f)
             dur = None
             if name == "video":
-                dur = _get_video_duration(fp)
+                dur = get_video_duration(fp)
             elif name == "audio":
-                dur = _get_audio_duration(fp)
+                dur = get_audio_duration(fp)
             elif name == "pose":
-                dur = _estimate_pose_duration(fp, cfg)
+                dur = get_pose_duration(fp, cfg.fps)
             elif name == "ephys":
-                dur = _get_ephys_duration(fp, cfg)
+                dur = get_ephys_duration(fp)
             if dur is not None:
                 durs[fp] = dur
 
@@ -241,78 +207,6 @@ def _compute_file_durations(state: WizardState) -> dict[str, dict[str, float]]:
 
     return durations
 
-def _count_csv_headers(path: str) -> int:
-    """
-    Dynamically count CSV header rows by detecting where data starts.
-    Works for DLC (3-4 headers), LightningPose (3 headers), SLEAP (1 header).
-    """
-    with open(path, 'r') as f:
-        for i, line in enumerate(f):
-            line = line.strip()
-            if not line:
-                continue
-            
-            # Check if line contains numeric data (data row)
-            parts = line.split(',')
-            if len(parts) < 2:
-                continue
-            
-            try:
-                # Try to parse as floats (skip first column which is frame index)
-                float(parts[0])  # Frame index
-                float(parts[1])  # First coordinate value
-                # Found data row, so header count is current line number
-                return i
-            except (ValueError, IndexError):
-                # Still in header section
-                continue
-    
-    # Default to 1 if we can't determine
-    return 1
-
-
-def _estimate_pose_duration(path: str, cfg: ModalityConfig) -> float | None:
-    try:
-        suffix = Path(path).suffix.lower()
-        n_frames = None
-        
-        if suffix == ".csv":
-            # Dynamically detect header count
-            n_headers = _count_csv_headers(path)
-            # Count total lines and subtract headers
-            with open(path, 'r') as fh:
-                n_frames = sum(1 for _ in fh) - n_headers
- 
-        elif suffix in (".h5", ".hdf5", ".slp"):
-            import h5py
-            with h5py.File(path, "r") as f:
-                if suffix == ".slp":
-                    n_frames = f["instances"].shape[0]
-                else:
-                    # Generic HDF5/h5 handling - find first 2D dataset
-                    for key in f.keys():
-                        data = f[key]
-                        if hasattr(data, 'shape') and len(data.shape) >= 2:
-                            n_frames = data.shape[0]
-                            break
-            
-        if n_frames is not None and n_frames > 0:
-            return n_frames / cfg.fps
-        else:
-            return None
-
-    except Exception as e:
-        print(f"Could not estimate duration for pose file {path}: {e}")
-        return None
-
-
-def _get_ephys_duration(path: str, cfg: ModalityConfig) -> float | None:
-    try:
-        from ethograph.gui.plots_ephystrace import GenericEphysLoader
-        loader = GenericEphysLoader(path)
-        return len(loader) / loader.rate
-    except Exception:
-        return None
 
 
 def _normalize_trial_key(value: object) -> object:

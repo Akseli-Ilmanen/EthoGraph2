@@ -34,7 +34,7 @@ TODO:
 
 ## Option 2: Create a trials.nc from your own data
 
-If you don't have a `trials.nc` file yet, click the **Create trials.nc** button in the `I/O` widget. A dialog will guide you through creating one from several supported data sources.
+If you don't have a `trials.nc` file yet, click the **➕Create with own data** button in the `I/O` widget. A dialog will guide you through creating one from several supported data sources.
 
 After generation, the I/O fields are auto-populated so you can click `Load` immediately.
 

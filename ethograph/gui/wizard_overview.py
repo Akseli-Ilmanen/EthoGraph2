@@ -120,7 +120,7 @@ class _ModeSelectionPage(QWidget):
         super().__init__(parent)
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel(
-            "<b>Create trials.nc file</b><br>"
+            "<b>➕Create with own data file</b><br>"
             "Select how your data is organized:"
         ))
         layout.addSpacing(12)
@@ -314,7 +314,7 @@ class NCWizardDialog(QDialog):
         self.io_widget = io_widget
         self._state = WizardState()
 
-        self.setWindowTitle("Create trials.nc — Wizard")
+        self.setWindowTitle("➕Create with own data — Wizard")
         self.setMinimumWidth(950)
         self.setMinimumHeight(750)
         self.resize(1050, 800)
@@ -520,7 +520,7 @@ class NCWizardDialog(QDialog):
 
         if progress.was_cancelled or error:
             if error:
-                QMessageBox.critical(self, "Error", f"Failed to create trials.nc:\n{error}")
+                QMessageBox.critical(self, "Error", f"Failed to ➕Create with own data:\n{error}")
             return
 
         save_progress = BusyProgressDialog("Saving .nc file…", parent=self)
